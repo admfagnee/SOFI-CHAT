@@ -5,78 +5,71 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>SOFI Chat</title>
 <style>
-/* --- Reset e corpo --- */
+/* === ESTILOS === */
 *{margin:0;padding:0;box-sizing:border-box;}
 body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Oxygen,Ubuntu,Cantarell,sans-serif;background:#f5f7fa;height:100vh;overflow:hidden;}
-
-/* --- Telas --- */
-.screen{display:none;height:100vh;justify-content:center;align-items:center;}
-.screen.active{display:flex;}
-
-/* --- LOGIN --- */
-#loginScreen{background:linear-gradient(135deg,#667eea 0%,#764ba2 100%);}
-.login-container{background:white;padding:3rem;border-radius:20px;box-shadow:0 20px 40px rgba(0,0,0,0.1);text-align:center;max-width:400px;width:90%;}
-.logo i{font-size:4rem;color:#667eea;margin-bottom:1rem;}
-.logo h1{font-size:3rem;color:#764ba2;margin-bottom:0.5rem;font-weight:bold;}
+.login-screen,.username-screen,.main-screen{display:none;height:100vh;width:100vw;justify-content:center;align-items:center;}
+.login-screen.active,.username-screen.active,.main-screen.active{display:flex;}
+.login-container,.username-container{background:white;padding:2rem;border-radius:20px;box-shadow:0 20px 40px rgba(0,0,0,0.1);text-align:center;max-width:400px;width:90%;}
 .btn-primary{background:linear-gradient(135deg,#667eea 0%,#764ba2 100%);color:white;border:none;padding:1rem 2rem;border-radius:12px;font-size:1rem;cursor:pointer;width:100%;font-weight:bold;}
-
-/* --- USERNAME --- */
-#usernameScreen{flex-direction:column;background:white;padding:3rem;border-radius:20px;box-shadow:0 20px 40px rgba(0,0,0,0.1);text-align:center;max-width:400px;width:90%;}
-
-/* --- CHAT --- */
-#mainScreen{display:flex;height:100vh;width:100vw;}
-.sidebar{width:300px;background:white;border-right:1px solid #e0e0e0;display:flex;flex-direction:column;}
-.sidebar-header{background:linear-gradient(135deg,#667eea 0%,#764ba2 100%);color:white;padding:1rem;display:flex;justify-content:space-between;align-items:center;}
+input{padding:1rem;border:2px solid #e0e0e0;border-radius:12px;width:100%;margin-bottom:1rem;font-size:1rem;}
+.main-screen{flex-direction:row;background:white;overflow:hidden;}
+.sidebar{width:350px;background:white;border-right:1px solid #e0e0e0;display:flex;flex-direction:column;}
+.sidebar-header{background:linear-gradient(135deg,#667eea 0%,#764ba2 100%);color:white;padding:1.5rem;display:flex;justify-content:space-between;align-items:center;}
 .conversations-list{flex:1;overflow-y:auto;padding:0.5rem;}
-.conversation-item{padding:1rem;border-radius:12px;cursor:pointer;display:flex;align-items:center;margin-bottom:0.5rem;transition:all 0.3s;}
-.conversation-item:hover{background:#f8f9ff;transform:translateX(5px);}
-.conversation-avatar{width:40px;height:40px;border-radius:50%;background:linear-gradient(135deg,#667eea 0%,#764ba2 100%);display:flex;align-items:center;justify-content:center;color:white;font-weight:bold;margin-right:1rem;}
-.conversation-info{flex:1;}
+.conversation-item{display:flex;align-items:center;padding:1rem;border-radius:12px;cursor:pointer;margin-bottom:0.5rem;position:relative;}
+.conversation-avatar{width:50px;height:50px;border-radius:50%;background:linear-gradient(135deg,#667eea 0%,#764ba2 100%);display:flex;align-items:center;justify-content:center;color:white;font-weight:bold;margin-right:1rem;}
+.conversation-name{font-weight:600;color:#333;margin-bottom:0.25rem;}
 .chat-area{flex:1;display:flex;flex-direction:column;background:#f5f7fa;}
-.chat-header{background:white;padding:1rem;border-bottom:1px solid #e0e0e0;display:flex;justify-content:space-between;align-items:center;}
-.messages-container{flex:1;overflow-y:auto;padding:1rem;background:#f5f7fa;}
+.chat-header{background:white;padding:1.5rem;border-bottom:1px solid #e0e0e0;display:flex;justify-content:space-between;align-items:center;}
+.chat-user-info{display:flex;align-items:center;gap:1rem;}
+.chat-avatar{width:45px;height:45px;border-radius:50%;background:linear-gradient(135deg,#667eea 0%,#764ba2 100%);display:flex;align-items:center;justify-content:center;color:white;font-weight:bold;}
+.messages-container{flex:1;overflow-y:auto;padding:1.5rem;background:#f5f7fa;}
 .message{margin-bottom:1rem;padding:0.75rem 1.25rem;border-radius:18px;max-width:70%;}
 .message.sent{background:linear-gradient(135deg,#667eea 0%,#764ba2 100%);color:white;margin-left:auto;border-bottom-right-radius:4px;}
 .message.received{background:white;color:#333;margin-right:auto;border-bottom-left-radius:4px;box-shadow:0 2px 10px rgba(0,0,0,0.1);}
 .message-input-container{background:white;padding:1rem;border-top:1px solid #e0e0e0;display:flex;align-items:center;gap:1rem;}
 #messageInput{flex:1;padding:1rem;border:2px solid #e0e0e0;border-radius:25px;font-size:1rem;}
 .btn-send{background:linear-gradient(135deg,#667eea 0%,#764ba2 100%);color:white;border:none;width:50px;height:50px;border-radius:50%;cursor:pointer;font-size:1.2rem;}
-
-/* --- STATUS --- */
-.user-online{width:10px;height:10px;background:#00ff00;border-radius:50%;margin-left:5px;}
-.user-offline{width:10px;height:10px;background:#ccc;border-radius:50%;margin-left:5px;}
 </style>
 </head>
 <body>
 
 <!-- LOGIN -->
-<div id="loginScreen" class="screen active">
+<div id="loginScreen" class="login-screen active">
   <div class="login-container">
-    <div class="logo"><i>💜</i><h1>SOFI</h1></div>
-    <button id="googleLoginBtn" class="btn-primary">Entrar com Google</button>
+    <h1>SOFI</h1>
+    <button id="googleLogin" class="btn-primary">Entrar com Google</button>
   </div>
 </div>
 
 <!-- USERNAME -->
-<div id="usernameScreen" class="screen">
-  <div id="usernameContainer">
-    <h2>Escolha um nome público</h2>
-    <input type="text" id="usernameInput" placeholder="Digite seu username">
-    <button id="saveUsernameBtn" class="btn-primary">Salvar</button>
+<div id="usernameScreen" class="username-screen">
+  <div class="username-container">
+    <h2>Escolha seu username</h2>
+    <input type="text" id="usernameInput" placeholder="Seu nome de exibição">
+    <button id="usernameBtn" class="btn-primary">Confirmar</button>
   </div>
 </div>
 
 <!-- CHAT -->
-<div id="mainScreen" class="screen">
+<div id="mainScreen" class="main-screen">
   <div class="sidebar">
-    <div class="sidebar-header"><h2>Contatos</h2></div>
+    <div class="sidebar-header"><h2>SOFI Chat</h2></div>
     <div class="conversations-list" id="contactsList"></div>
   </div>
   <div class="chat-area">
-    <div class="chat-header"><div id="chatTitle">Selecione um contato</div></div>
+    <div class="chat-header">
+      <div class="chat-user-info">
+        <div class="chat-avatar" id="currentChatAvatar">💜</div>
+        <div>
+          <h3 id="currentChatName">Selecione um contato</h3>
+        </div>
+      </div>
+    </div>
     <div class="messages-container" id="messagesContainer"></div>
     <div class="message-input-container">
-      <input type="text" id="messageInput" placeholder="Digite uma mensagem..." disabled>
+      <input type="text" id="messageInput" placeholder="Digite sua mensagem..." disabled>
       <button id="sendButton" class="btn-send" disabled>➤</button>
     </div>
   </div>
@@ -86,9 +79,8 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Oxygen,Ubunt
 <script type="module">
 import { initializeApp } from "https://www.gstatic.com/firebasejs/12.8.0/firebase-app.js";
 import { getAuth, GoogleAuthProvider, signInWithPopup, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/12.8.0/firebase-auth.js";
-import { getDatabase, ref, set, get, onValue, push } from "https://www.gstatic.com/firebasejs/12.8.0/firebase-database.js";
+import { getDatabase, ref, set, push, onChildAdded, get, child, update } from "https://www.gstatic.com/firebasejs/12.8.0/firebase-database.js";
 
-// CONFIG FIREBASE
 const firebaseConfig = {
   apiKey: "AIzaSyDwsERnH6Obpzc6Klt9r7IxDXWOkiaYSHU",
   authDomain: "sofi-chat.firebaseapp.com",
@@ -98,128 +90,113 @@ const firebaseConfig = {
   appId: "1:533851013944:web:a49900cdde03ba01dd37cd"
 };
 const app = initializeApp(firebaseConfig);
-const auth = getAuth(app);
-const db = getDatabase(app);
-
-// ELEMENTOS
-const loginScreen = document.getElementById('loginScreen');
-const usernameScreen = document.getElementById('usernameScreen');
-const mainScreen = document.getElementById('mainScreen');
-const googleLoginBtn = document.getElementById('googleLoginBtn');
-const saveUsernameBtn = document.getElementById('saveUsernameBtn');
-const usernameInput = document.getElementById('usernameInput');
-const contactsList = document.getElementById('contactsList');
-const messagesContainer = document.getElementById('messagesContainer');
-const messageInput = document.getElementById('messageInput');
-const sendButton = document.getElementById('sendButton');
-const chatTitle = document.getElementById('chatTitle');
+const auth = getAuth();
+const db = getDatabase();
 
 let currentUser = null;
-let currentChatId = null;
+let currentChat = null;
+
+// UTIL
+function showScreen(screen){
+  document.getElementById('loginScreen').classList.remove('active');
+  document.getElementById('usernameScreen').classList.remove('active');
+  document.getElementById('mainScreen').classList.remove('active');
+  screen.classList.add('active');
+}
 
 // LOGIN GOOGLE
-googleLoginBtn.addEventListener('click', async () => {
+document.getElementById('googleLogin').addEventListener('click',async()=>{
   const provider = new GoogleAuthProvider();
   try{
-    await signInWithPopup(auth, provider);
-  }catch(err){console.error(err);}
+    await signInWithPopup(auth,provider);
+  }catch(e){
+    alert('Erro no login: '+e.message);
+  }
 });
 
-// ON AUTH CHANGE
-onAuthStateChanged(auth, async (user) => {
+// USERNAME
+onAuthStateChanged(auth,async(user)=>{
   if(user){
     currentUser = {uid:user.uid,email:user.email};
     const userRef = ref(db,'users/'+currentUser.uid);
     const snapshot = await get(userRef);
     if(snapshot.exists() && snapshot.val().username){
       currentUser.username = snapshot.val().username;
-      showScreen(mainScreen);
+      showScreen(document.getElementById('mainScreen'));
       loadContacts();
-    }else{
-      showScreen(usernameScreen);
+    } else {
+      showScreen(document.getElementById('usernameScreen'));
     }
   }else{
-    showScreen(loginScreen);
+    showScreen(document.getElementById('loginScreen'));
   }
 });
 
-// SALVAR USERNAME
-saveUsernameBtn.addEventListener('click', async ()=>{
-  const uname = usernameInput.value.trim();
-  if(!uname)return alert("Digite um username");
-  const usersRef = ref(db,'users');
-  const snapshot = await get(usersRef);
-  const exists = snapshot.exists() && Object.values(snapshot.val()).some(u=>u.username===uname);
-  if(exists)return alert("Username já existe");
-  await set(ref(db,'users/'+currentUser.uid),{uid:currentUser.uid,email:currentUser.email,username:uname,online:true});
-  currentUser.username = uname;
-  showScreen(mainScreen);
+document.getElementById('usernameBtn').addEventListener('click',async()=>{
+  const name = document.getElementById('usernameInput').value.trim();
+  if(!name){alert('Digite um nome'); return;}
+  const userRef = ref(db,'users/'+currentUser.uid);
+  await set(userRef,{username:name,uid:currentUser.uid,email:currentUser.email});
+  currentUser.username = name;
+  showScreen(document.getElementById('mainScreen'));
   loadContacts();
 });
 
-// MOSTRAR TELA
-function showScreen(screen){
-  loginScreen.classList.remove('active');
-  usernameScreen.classList.remove('active');
-  mainScreen.classList.remove('active');
-  screen.classList.add('active');
-}
-
-// CARREGAR CONTATOS
+// LOAD CONTACTS
 function loadContacts(){
+  const list = document.getElementById('contactsList');
+  list.innerHTML='';
   const usersRef = ref(db,'users');
-  onValue(usersRef,(snapshot)=>{
-    contactsList.innerHTML='';
-    snapshot.forEach(child=>{
-      const user = child.val();
-      if(user.uid===currentUser.uid)return; // não mostrar a si mesmo
+  onChildAdded(usersRef,(snapshot)=>{
+    const u = snapshot.val();
+    if(u.uid !== currentUser.uid){
       const div = document.createElement('div');
-      div.classList.add('conversation-item');
-      div.innerHTML=`<div class="conversation-avatar">${user.username.charAt(0).toUpperCase()}</div>
-                     <div class="conversation-info">${user.username}</div>
-                     <div class="${user.online?'user-online':'user-offline'}"></div>`;
-      div.addEventListener('click', ()=>openChat(user));
-      contactsList.appendChild(div);
-    });
+      div.className='conversation-item';
+      div.innerHTML=`<div class="conversation-avatar">${u.username.charAt(0).toUpperCase()}</div><div class="conversation-name">${u.username}</div>`;
+      div.onclick=()=>openChat(u);
+      list.appendChild(div);
+    }
   });
 }
 
 // ABRIR CHAT 1x1
-function openChat(user){
-  currentChatId = [currentUser.uid,user.uid].sort().join('_');
-  chatTitle.innerText=user.username;
-  messageInput.disabled=false;
-  sendButton.disabled=false;
+function openChat(u){
+  currentChat = u;
+  document.getElementById('currentChatName').innerText = u.username;
+  document.getElementById('messageInput').disabled=false;
+  document.getElementById('sendButton').disabled=false;
   loadMessages();
 }
 
-// CARREGAR MENSAGENS
+// ENVIAR MENSAGEM
+document.getElementById('sendButton').addEventListener('click',sendMessage);
+document.getElementById('messageInput').addEventListener('keypress',e=>{if(e.key==='Enter') sendMessage();});
+
+function sendMessage(){
+  const text = document.getElementById('messageInput').value.trim();
+  if(!text || !currentChat) return;
+  const chatId = [currentUser.uid,currentChat.uid].sort().join('_');
+  const msgRef = ref(db,'messages/'+chatId);
+  const message = {sender:currentUser.uid,text: text,time:Date.now()};
+  push(msgRef,message);
+  document.getElementById('messageInput').value='';
+}
+
+// LOAD MESSAGES
 function loadMessages(){
-  const chatRef = ref(db,'messages/'+currentChatId);
-  onValue(chatRef,(snapshot)=>{
-    messagesContainer.innerHTML='';
-    snapshot.forEach(child=>{
-      const msg = child.val();
-      const div = document.createElement('div');
-      div.classList.add('message');
-      div.classList.add(msg.uid===currentUser.uid?'sent':'received');
-      div.innerText=msg.text;
-      messagesContainer.appendChild(div);
-    });
-    messagesContainer.scrollTop = messagesContainer.scrollHeight;
+  const container = document.getElementById('messagesContainer');
+  container.innerHTML='';
+  const chatId = [currentUser.uid,currentChat.uid].sort().join('_');
+  const msgRef = ref(db,'messages/'+chatId);
+  onChildAdded(msgRef,(snapshot)=>{
+    const m = snapshot.val();
+    const div = document.createElement('div');
+    div.className = m.sender===currentUser.uid?'message sent':'message received';
+    div.innerText = m.text;
+    container.appendChild(div);
+    container.scrollTop = container.scrollHeight;
   });
 }
-
-// ENVIAR MENSAGEM
-sendButton.addEventListener('click', sendMessage);
-messageInput.addEventListener('keypress', (e)=>{if(e.key==='Enter')sendMessage();});
-function sendMessage(){
-  if(!messageInput.value.trim())return;
-  const chatRef = ref(db,'messages/'+currentChatId);
-  push(chatRef,{uid:currentUser.uid,text:messageInput.value.trim(),timestamp:Date.now()});
-  messageInput.value='';
-}
-
 </script>
 </body>
 </html>
