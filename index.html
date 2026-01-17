@@ -1,209 +1,160 @@
 <!DOCTYPE html>
 <html lang="pt-BR">
 <head>
-  <meta charset="UTF-8" />
-  <title>SOFI CHAT</title>
-  <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <style>
-    body {
-      margin: 0;
-      font-family: Arial, sans-serif;
-      background: #f5f7fa;
-    }
-    .hidden { display: none; }
-
-    button {
-      padding: 12px;
-      border: none;
-      border-radius: 6px;
-      background: #667eea;
-      color: white;
-      font-size: 16px;
-    }
-
-    input {
-      padding: 10px;
-      width: 100%;
-      margin-top: 8px;
-    }
-
-    #login, #setup, #chat {
-      padding: 20px;
-    }
-
-    #contacts div {
-      padding: 10px;
-      background: white;
-      margin-bottom: 8px;
-      border-radius: 6px;
-      cursor: pointer;
-    }
-
-    #messages {
-      height: 60vh;
-      overflow-y: auto;
-      background: white;
-      padding: 10px;
-      border-radius: 6px;
-      margin-bottom: 10px;
-    }
-
-    .me { text-align: right; color: #667eea; }
-    .other { text-align: left; color: #333; }
-  </style>
+<meta charset="UTF-8" />
+<title>SOFI CHAT</title>
+<style>
+body { font-family: Arial; margin: 0; background:#f2f2f2; }
+#login, #profile, #chat { display:none; padding:20px; }
+#contacts div { padding:10px; border-bottom:1px solid #ccc; cursor:pointer; }
+#messages { height:300px; overflow-y:auto; background:#fff; padding:10px; }
+</style>
 </head>
 <body>
 
+<!-- LOGIN -->
 <div id="login">
   <h2>SOFI CHAT</h2>
-  <button id="googleLogin">Entrar com Google</button>
+  <button id="loginGoogle">Entrar com Google</button>
 </div>
 
-<div id="setup" class="hidden">
+<!-- CRIAR PERFIL -->
+<div id="profile">
   <h3>Escolha seu ID público</h3>
   <input id="username" placeholder="ex: fagner123" />
-  <button id="saveProfile">Continuar</button>
+  <button id="saveProfile">Salvar</button>
 </div>
 
-<div id="chat" class="hidden">
-  <h3 id="chatTitle">Contatos</h3>
+<!-- CHAT -->
+<div id="chat">
+  <h3>Contatos</h3>
   <div id="contacts"></div>
 
-  <div id="messages" class="hidden"></div>
+  <hr>
 
-  <div id="sendBox" class="hidden">
-    <input id="msgInput" placeholder="Digite uma mensagem" />
-    <button id="sendMsg">Enviar</button>
-  </div>
+  <h3>Chat</h3>
+  <div id="messages"></div>
+  <input id="msgInput" placeholder="Digite..." />
+  <button id="sendMsg">Enviar</button>
 </div>
 
 <script type="module">
-  import { initializeApp } from "https://www.gstatic.com/firebasejs/9.23.0/firebase-app.js";
-  import { getAuth, GoogleAuthProvider, signInWithPopup, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/9.23.0/firebase-auth.js";
-  import { getFirestore, doc, setDoc, getDoc, collection, getDocs, addDoc, query, where, orderBy, onSnapshot, serverTimestamp } from "https://www.gstatic.com/firebasejs/9.23.0/firebase-firestore.js";
+import { initializeApp } from "https://www.gstatic.com/firebasejs/12.8.0/firebase-app.js";
+import { getAuth, GoogleAuthProvider, signInWithPopup, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/12.8.0/firebase-auth.js";
+import { getFirestore, doc, setDoc, getDoc, collection, addDoc, query, where, onSnapshot, orderBy, serverTimestamp } from "https://www.gstatic.com/firebasejs/12.8.0/firebase-firestore.js";
 
-  const firebaseConfig = {
-    apiKey: "AIzaSyDwsERnH6Obpzc6Klt9r7IxDXWOkiaYSHU",
-    authDomain: "sofi-chat.firebaseapp.com",
-    projectId: "sofi-chat",
-    storageBucket: "sofi-chat.firebasestorage.app",
-    messagingSenderId: "533851013944",
-    appId: "1:533851013944:web:a49900cdde03ba01dd37cd"
-  };
+const firebaseConfig = {
+  apiKey: "AIzaSyDwsERnH6Obpzc6Klt9r7IxDXWOkiaYSHU",
+  authDomain: "sofi-chat.firebaseapp.com",
+  projectId: "sofi-chat",
+  storageBucket: "sofi-chat.firebasestorage.app",
+  messagingSenderId: "533851013944",
+  appId: "1:533851013944:web:a49900cdde03ba01dd37cd"
+};
 
-  const app = initializeApp(firebaseConfig);
-  const auth = getAuth(app);
-  const db = getFirestore(app);
+const app = initializeApp(firebaseConfig);
+const auth = getAuth(app);
+const db = getFirestore(app);
+const provider = new GoogleAuthProvider();
 
-  const login = document.getElementById("login");
-  const setup = document.getElementById("setup");
-  const chat = document.getElementById("chat");
+const loginDiv = document.getElementById("login");
+const profileDiv = document.getElementById("profile");
+const chatDiv = document.getElementById("chat");
+const contactsDiv = document.getElementById("contacts");
+const messagesDiv = document.getElementById("messages");
 
-  const googleLogin = document.getElementById("googleLogin");
-  const saveProfile = document.getElementById("saveProfile");
+let currentUser = null;
+let currentChatUser = null;
 
-  const contactsDiv = document.getElementById("contacts");
-  const messagesDiv = document.getElementById("messages");
-  const sendBox = document.getElementById("sendBox");
-  const msgInput = document.getElementById("msgInput");
+document.getElementById("loginGoogle").onclick = () => {
+  signInWithPopup(auth, provider);
+};
 
-  let currentUser = null;
-  let currentChatId = null;
+onAuthStateChanged(auth, async user => {
+  if (!user) {
+    loginDiv.style.display = "block";
+    return;
+  }
 
-  googleLogin.onclick = async () => {
-    const provider = new GoogleAuthProvider();
-    await signInWithPopup(auth, provider);
-  };
+  currentUser = user;
+  loginDiv.style.display = "none";
 
-  onAuthStateChanged(auth, async (user) => {
-    if (!user) {
-      login.classList.remove("hidden");
-      setup.classList.add("hidden");
-      chat.classList.add("hidden");
-      return;
-    }
+  const ref = doc(db, "users", user.uid);
+  const snap = await getDoc(ref);
 
-    currentUser = user;
-    login.classList.add("hidden");
+  if (!snap.exists()) {
+    profileDiv.style.display = "block";
+  } else {
+    chatDiv.style.display = "block";
+    loadContacts();
+  }
+});
 
-    const userRef = doc(db, "users", user.uid);
-    const snap = await getDoc(userRef);
+document.getElementById("saveProfile").onclick = async () => {
+  const username = document.getElementById("username").value.trim();
+  if (!username) return alert("Escolha um ID");
 
-    if (!snap.exists()) {
-      setup.classList.remove("hidden");
-    } else {
-      loadContacts();
-      chat.classList.remove("hidden");
-    }
+  await setDoc(doc(db, "users", currentUser.uid), {
+    name: currentUser.displayName,
+    username: username
   });
 
-  saveProfile.onclick = async () => {
-    const username = document.getElementById("username").value.trim();
-    if (!username) return alert("Escolha um ID");
+  profileDiv.style.display = "none";
+  chatDiv.style.display = "block";
+  loadContacts();
+};
 
-    await setDoc(doc(db, "users", currentUser.uid), {
-      uid: currentUser.uid,
-      name: currentUser.displayName,
-      username,
-      photo: currentUser.photoURL,
-      createdAt: serverTimestamp()
-    });
-
-    setup.classList.add("hidden");
-    loadContacts();
-    chat.classList.remove("hidden");
-  };
-
-  async function loadContacts() {
+function loadContacts() {
+  onSnapshot(collection(db, "users"), snapshot => {
     contactsDiv.innerHTML = "";
-    const usersSnap = await getDocs(collection(db, "users"));
-
-    usersSnap.forEach(docu => {
+    snapshot.forEach(docu => {
       if (docu.id === currentUser.uid) return;
+      const data = docu.data();
 
       const div = document.createElement("div");
-      div.textContent = docu.data().name + " (" + docu.data().username + ")";
+      div.textContent = data.name + " (" + data.username + ")";
       div.onclick = () => openChat(docu.id);
       contactsDiv.appendChild(div);
     });
-  }
+  });
+}
 
-  function openChat(otherId) {
-    currentChatId = [currentUser.uid, otherId].sort().join("_");
-    messagesDiv.classList.remove("hidden");
-    sendBox.classList.remove("hidden");
+function openChat(uid) {
+  currentChatUser = uid;
+  messagesDiv.innerHTML = "";
+
+  const q = query(
+    collection(db, "messages"),
+    where("participants", "array-contains", currentUser.uid),
+    orderBy("createdAt")
+  );
+
+  onSnapshot(q, snapshot => {
     messagesDiv.innerHTML = "";
+    snapshot.forEach(docu => {
+      const msg = docu.data();
+      if (!msg.participants.includes(currentChatUser)) return;
 
-    const q = query(
-      collection(db, "messages"),
-      where("chatId", "==", currentChatId),
-      orderBy("createdAt")
-    );
-
-    onSnapshot(q, snap => {
-      messagesDiv.innerHTML = "";
-      snap.forEach(m => {
-        const p = document.createElement("p");
-        p.textContent = m.data().text;
-        p.className = m.data().sender === currentUser.uid ? "me" : "other";
-        messagesDiv.appendChild(p);
-      });
+      const p = document.createElement("p");
+      p.textContent = msg.sender === currentUser.uid ? "Você: " + msg.text : msg.text;
+      messagesDiv.appendChild(p);
     });
-  }
+  });
+}
 
-  document.getElementById("sendMsg").onclick = async () => {
-    const text = msgInput.value.trim();
-    if (!text || !currentChatId) return;
+document.getElementById("sendMsg").onclick = async () => {
+  const text = document.getElementById("msgInput").value.trim();
+  if (!text || !currentChatUser) return;
 
-    await addDoc(collection(db, "messages"), {
-      chatId: currentChatId,
-      sender: currentUser.uid,
-      text,
-      createdAt: serverTimestamp()
-    });
+  await addDoc(collection(db, "messages"), {
+    text,
+    sender: currentUser.uid,
+    participants: [currentUser.uid, currentChatUser],
+    createdAt: serverTimestamp()
+  });
 
-    msgInput.value = "";
-  };
+  document.getElementById("msgInput").value = "";
+};
 </script>
 
 </body>
