@@ -2,163 +2,85 @@
 <html lang="pt-BR">
 <head>
   <meta charset="UTF-8" />
-  <title>SOFI-CHAT</title>
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-
+  <title>SOFI CHAT</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
   <style>
     body {
       margin: 0;
       font-family: Arial, sans-serif;
-      background: #0f172a;
-      color: #e5e7eb;
+      background: #f5f7fa;
     }
-
     .hidden { display: none; }
 
     button {
-      padding: 10px 16px;
+      padding: 12px;
       border: none;
       border-radius: 6px;
-      background: #2563eb;
-      color: #fff;
+      background: #667eea;
+      color: white;
       font-size: 16px;
     }
 
     input {
       padding: 10px;
-      border-radius: 6px;
-      border: none;
       width: 100%;
       margin-top: 8px;
     }
 
-    header {
-      padding: 12px;
-      background: #020617;
-      text-align: center;
-      font-weight: bold;
-    }
-
-    #login, #usernameScreen {
-      height: 100vh;
-      display: flex;
-      flex-direction: column;
-      justify-content: center;
-      align-items: center;
-      gap: 16px;
-    }
-
-    #app {
-      display: flex;
-      height: 100vh;
-    }
-
-    #contacts {
-      width: 30%;
-      background: #020617;
-      overflow-y: auto;
+    #login, #setup, #chat {
+      padding: 20px;
     }
 
     #contacts div {
       padding: 10px;
-      border-bottom: 1px solid #1e293b;
+      background: white;
+      margin-bottom: 8px;
+      border-radius: 6px;
       cursor: pointer;
     }
 
-    #chat {
-      flex: 1;
-      display: flex;
-      flex-direction: column;
-    }
-
     #messages {
-      flex: 1;
-      padding: 10px;
+      height: 60vh;
       overflow-y: auto;
-    }
-
-    #inputArea {
-      display: flex;
+      background: white;
       padding: 10px;
-      gap: 8px;
+      border-radius: 6px;
+      margin-bottom: 10px;
     }
 
-    #inputArea input {
-      flex: 1;
-    }
-
-    .msg {
-      margin-bottom: 8px;
-    }
-
-    .me {
-      text-align: right;
-      color: #38bdf8;
-    }
-
-    .system {
-      text-align: center;
-      color: #94a3b8;
-      font-style: italic;
-    }
+    .me { text-align: right; color: #667eea; }
+    .other { text-align: left; color: #333; }
   </style>
 </head>
-
 <body>
 
-<!-- LOGIN -->
 <div id="login">
-  <h2>SOFI-CHAT</h2>
-  <button id="loginGoogle">Entrar com Google</button>
+  <h2>SOFI CHAT</h2>
+  <button id="googleLogin">Entrar com Google</button>
 </div>
 
-<!-- CRIAR USERNAME -->
-<div id="usernameScreen" class="hidden">
-  <h3>Escolha seu ID</h3>
-  <input id="usernameInput" placeholder="@seu_id" />
-  <button id="saveUsername">Continuar</button>
-  <p id="usernameError" style="color:red;"></p>
+<div id="setup" class="hidden">
+  <h3>Escolha seu ID público</h3>
+  <input id="username" placeholder="ex: fagner123" />
+  <button id="saveProfile">Continuar</button>
 </div>
 
-<!-- APP -->
-<div id="app" class="hidden">
-  <div id="contacts">
-    <header>Contatos</header>
-    <div id="contactsList"></div>
-  </div>
+<div id="chat" class="hidden">
+  <h3 id="chatTitle">Contatos</h3>
+  <div id="contacts"></div>
 
-  <div id="chat">
-    <header id="chatHeader">SOFI-CHAT</header>
-    <div id="messages"></div>
-    <div id="inputArea">
-      <input id="messageInput" placeholder="Digite uma mensagem..." />
-      <button id="sendMessage">Enviar</button>
-    </div>
+  <div id="messages" class="hidden"></div>
+
+  <div id="sendBox" class="hidden">
+    <input id="msgInput" placeholder="Digite uma mensagem" />
+    <button id="sendMsg">Enviar</button>
   </div>
 </div>
 
 <script type="module">
   import { initializeApp } from "https://www.gstatic.com/firebasejs/9.23.0/firebase-app.js";
-  import {
-    getAuth,
-    GoogleAuthProvider,
-    signInWithPopup,
-    onAuthStateChanged
-  } from "https://www.gstatic.com/firebasejs/9.23.0/firebase-auth.js";
-
-  import {
-    getFirestore,
-    doc,
-    getDoc,
-    setDoc,
-    collection,
-    getDocs,
-    addDoc,
-    query,
-    orderBy,
-    onSnapshot,
-    serverTimestamp
-  } from "https://www.gstatic.com/firebasejs/9.23.0/firebase-firestore.js";
+  import { getAuth, GoogleAuthProvider, signInWithPopup, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/9.23.0/firebase-auth.js";
+  import { getFirestore, doc, setDoc, getDoc, collection, getDocs, addDoc, query, where, orderBy, onSnapshot, serverTimestamp } from "https://www.gstatic.com/firebasejs/9.23.0/firebase-firestore.js";
 
   const firebaseConfig = {
     apiKey: "AIzaSyDwsERnH6Obpzc6Klt9r7IxDXWOkiaYSHU",
@@ -172,118 +94,115 @@
   const app = initializeApp(firebaseConfig);
   const auth = getAuth(app);
   const db = getFirestore(app);
-  const provider = new GoogleAuthProvider();
 
-  const loginDiv = document.getElementById("login");
-  const usernameScreen = document.getElementById("usernameScreen");
-  const appDiv = document.getElementById("app");
+  const login = document.getElementById("login");
+  const setup = document.getElementById("setup");
+  const chat = document.getElementById("chat");
 
-  const contactsList = document.getElementById("contactsList");
+  const googleLogin = document.getElementById("googleLogin");
+  const saveProfile = document.getElementById("saveProfile");
+
+  const contactsDiv = document.getElementById("contacts");
   const messagesDiv = document.getElementById("messages");
+  const sendBox = document.getElementById("sendBox");
+  const msgInput = document.getElementById("msgInput");
 
-  let currentUser;
+  let currentUser = null;
   let currentChatId = null;
 
-  document.getElementById("loginGoogle").onclick = () => {
-    signInWithPopup(auth, provider);
+  googleLogin.onclick = async () => {
+    const provider = new GoogleAuthProvider();
+    await signInWithPopup(auth, provider);
   };
 
   onAuthStateChanged(auth, async (user) => {
-    if (!user) return;
+    if (!user) {
+      login.classList.remove("hidden");
+      setup.classList.add("hidden");
+      chat.classList.add("hidden");
+      return;
+    }
 
     currentUser = user;
+    login.classList.add("hidden");
+
     const userRef = doc(db, "users", user.uid);
     const snap = await getDoc(userRef);
 
     if (!snap.exists()) {
-      loginDiv.classList.add("hidden");
-      usernameScreen.classList.remove("hidden");
+      setup.classList.remove("hidden");
     } else {
-      startApp();
+      loadContacts();
+      chat.classList.remove("hidden");
     }
   });
 
-  document.getElementById("saveUsername").onclick = async () => {
-    const username = document.getElementById("usernameInput").value.trim().toLowerCase();
-    if (!username) return;
-
-    const usersSnap = await getDocs(collection(db, "users"));
-    if (usersSnap.docs.some(d => d.data().username === username)) {
-      document.getElementById("usernameError").innerText = "ID já em uso";
-      return;
-    }
+  saveProfile.onclick = async () => {
+    const username = document.getElementById("username").value.trim();
+    if (!username) return alert("Escolha um ID");
 
     await setDoc(doc(db, "users", currentUser.uid), {
+      uid: currentUser.uid,
       name: currentUser.displayName,
       username,
-      photoURL: currentUser.photoURL,
+      photo: currentUser.photoURL,
       createdAt: serverTimestamp()
     });
 
-    usernameScreen.classList.add("hidden");
-    startApp(true);
+    setup.classList.add("hidden");
+    loadContacts();
+    chat.classList.remove("hidden");
   };
 
-  async function startApp(firstTime = false) {
-    loginDiv.classList.add("hidden");
-    usernameScreen.classList.add("hidden");
-    appDiv.classList.remove("hidden");
-
-    if (firstTime) {
-      messagesDiv.innerHTML = `<div class="system">
-        Bem-vindo ao SOFI-CHAT.<br>
-        Agora você pode iniciar conversas privadas selecionando um contato.
-      </div>`;
-    }
-
-    loadContacts();
-  }
-
   async function loadContacts() {
-    contactsList.innerHTML = "";
-    const snap = await getDocs(collection(db, "users"));
-    snap.forEach(docu => {
+    contactsDiv.innerHTML = "";
+    const usersSnap = await getDocs(collection(db, "users"));
+
+    usersSnap.forEach(docu => {
       if (docu.id === currentUser.uid) return;
 
-      const d = docu.data();
       const div = document.createElement("div");
-      div.innerText = `${d.name} (@${d.username})`;
-      div.onclick = () => openChat(docu.id, d.name);
-      contactsList.appendChild(div);
+      div.textContent = docu.data().name + " (" + docu.data().username + ")";
+      div.onclick = () => openChat(docu.id);
+      contactsDiv.appendChild(div);
     });
   }
 
-  function openChat(uid, name) {
-    document.getElementById("chatHeader").innerText = name;
+  function openChat(otherId) {
+    currentChatId = [currentUser.uid, otherId].sort().join("_");
+    messagesDiv.classList.remove("hidden");
+    sendBox.classList.remove("hidden");
     messagesDiv.innerHTML = "";
 
-    currentChatId = [currentUser.uid, uid].sort().join("_");
-    const msgsRef = collection(db, "chats", currentChatId, "messages");
-    const q = query(msgsRef, orderBy("createdAt"));
+    const q = query(
+      collection(db, "messages"),
+      where("chatId", "==", currentChatId),
+      orderBy("createdAt")
+    );
 
     onSnapshot(q, snap => {
       messagesDiv.innerHTML = "";
       snap.forEach(m => {
-        const d = m.data();
-        const div = document.createElement("div");
-        div.className = "msg " + (d.uid === currentUser.uid ? "me" : "");
-        div.innerText = d.text;
-        messagesDiv.appendChild(div);
+        const p = document.createElement("p");
+        p.textContent = m.data().text;
+        p.className = m.data().sender === currentUser.uid ? "me" : "other";
+        messagesDiv.appendChild(p);
       });
     });
   }
 
-  document.getElementById("sendMessage").onclick = async () => {
-    const text = document.getElementById("messageInput").value.trim();
+  document.getElementById("sendMsg").onclick = async () => {
+    const text = msgInput.value.trim();
     if (!text || !currentChatId) return;
 
-    await addDoc(collection(db, "chats", currentChatId, "messages"), {
+    await addDoc(collection(db, "messages"), {
+      chatId: currentChatId,
+      sender: currentUser.uid,
       text,
-      uid: currentUser.uid,
       createdAt: serverTimestamp()
     });
 
-    document.getElementById("messageInput").value = "";
+    msgInput.value = "";
   };
 </script>
 
