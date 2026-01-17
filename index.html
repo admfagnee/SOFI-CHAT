@@ -1,231 +1,222 @@
 <!DOCTYPE html>
 <html lang="pt-BR">
 <head>
-<meta charset="UTF-8" />
-<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>SOFI Chat</title>
-
 <style>
-:root{
-  --primary:#667eea;
-  --secondary:#764ba2;
-  --bg:#f5f7fa;
-}
+  :root{
+    --primary:#667eea;
+    --secondary:#764ba2;
+    --bg:#f5f7fa;
+    --white:#fff;
+    --text:#333;
+    --muted:#777;
+  }
+  *{box-sizing:border-box}
+  body{margin:0;font-family:system-ui,-apple-system,Segoe UI,Roboto;background:var(--bg);height:100vh}
 
-body{
-  margin:0;
-  font-family: system-ui, -apple-system, BlinkMacSystemFont;
-  background:var(--bg);
-}
+  /* ===== LOGIN ===== */
+  #loginScreen{display:flex;align-items:center;justify-content:center;height:100vh;background:linear-gradient(135deg,var(--primary),var(--secondary))}
+  .login-card{background:#fff;padding:28px;border-radius:16px;max-width:360px;width:90%;text-align:center;box-shadow:0 20px 40px rgba(0,0,0,.15)}
+  .logo{font-size:40px;color:var(--primary);margin-bottom:8px}
+  .btn{border:0;border-radius:12px;padding:12px 16px;cursor:pointer;font-weight:600}
+  .btn-primary{background:linear-gradient(135deg,var(--primary),var(--secondary));color:#fff;width:100%}
 
-#login{
-  height:100vh;
-  display:flex;
-  align-items:center;
-  justify-content:center;
-  background:linear-gradient(135deg,var(--primary),var(--secondary));
-}
+  /* ===== CHAT ===== */
+  #chatScreen{display:none;height:100vh}
+  .app{display:flex;height:100%}
+  .sidebar{width:320px;background:#fff;border-right:1px solid #e6e6e6;display:flex;flex-direction:column}
+  .side-header{padding:16px;color:#fff;background:linear-gradient(135deg,var(--primary),var(--secondary))}
+  .side-header small{opacity:.9}
+  .list{flex:1;overflow:auto}
+  .item{padding:12px 16px;border-bottom:1px solid #f0f0f0;cursor:pointer}
+  .item.active{background:#eef1ff}
+  .item b{display:block}
+  .item span{font-size:12px;color:var(--muted)}
+  .chat{flex:1;display:flex;flex-direction:column}
+  .chat-header{padding:16px;background:#fff;border-bottom:1px solid #e6e6e6}
+  .chat-header small{color:var(--muted)}
+  .msgs{flex:1;overflow:auto;padding:16px}
+  .msg{max-width:70%;margin-bottom:8px;padding:10px 12px;border-radius:14px}
+  .me{margin-left:auto;background:linear-gradient(135deg,var(--primary),var(--secondary));color:#fff}
+  .other{background:#fff}
+  .meta{font-size:11px;opacity:.8;text-align:right}
+  .typing{font-size:12px;color:var(--muted);padding:6px 16px}
+  .input{display:flex;gap:8px;padding:12px;background:#fff;border-top:1px solid #e6e6e6}
+  .input input{flex:1;padding:12px;border-radius:20px;border:1px solid #ddd}
+  .send{width:44px;height:44px;border-radius:50%;background:linear-gradient(135deg,var(--primary),var(--secondary));color:#fff;border:0}
 
-.login-box{
-  background:white;
-  padding:30px;
-  border-radius:16px;
-  text-align:center;
-  width:90%;
-  max-width:350px;
-}
-
-button{
-  padding:12px 20px;
-  border:none;
-  border-radius:10px;
-  cursor:pointer;
-  background:linear-gradient(135deg,var(--primary),var(--secondary));
-  color:white;
-  font-weight:600;
-}
-
-#app{
-  display:none;
-  height:100vh;
-}
-
-.sidebar{
-  width:320px;
-  background:white;
-  border-right:1px solid #ddd;
-  overflow-y:auto;
-}
-
-.chat{
-  flex:1;
-  display:flex;
-  flex-direction:column;
-}
-
-header{
-  padding:15px;
-  background:white;
-  border-bottom:1px solid #ddd;
-  display:flex;
-  align-items:center;
-  gap:10px;
-}
-
-.messages{
-  flex:1;
-  padding:15px;
-  overflow-y:auto;
-}
-
-.msg{
-  max-width:70%;
-  margin-bottom:10px;
-  padding:10px 14px;
-  border-radius:18px;
-  font-size:14px;
-}
-
-.me{
-  margin-left:auto;
-  background:linear-gradient(135deg,var(--primary),var(--secondary));
-  color:white;
-}
-
-.other{
-  background:white;
-  box-shadow:0 2px 6px rgba(0,0,0,.1);
-}
-
-.input{
-  display:flex;
-  padding:10px;
-  gap:10px;
-  background:white;
-}
-
-input{
-  flex:1;
-  padding:12px;
-  border-radius:20px;
-  border:1px solid #ccc;
-}
+  @media(max-width:768px){
+    .sidebar{width:100%}
+    .chat{display:none}
+  }
 </style>
 </head>
-
 <body>
 
-<div id="login">
-  <div class="login-box">
-    <h2>SOFI Chat</h2>
-    <button id="googleLogin">Entrar com Google</button>
+<!-- LOGIN -->
+<section id="loginScreen">
+  <div class="login-card">
+    <div class="logo">SOFI</div>
+    <p>Entre com Google para continuar</p>
+    <button id="googleLogin" class="btn btn-primary">Entrar com Google</button>
+    <p id="loginStatus"></p>
   </div>
-</div>
+</section>
 
-<div id="app" style="display:flex">
-  <div class="sidebar" id="conversations"></div>
-  <div class="chat">
-    <header>
-      <img id="chatPhoto" width="40" height="40" style="border-radius:50%">
-      <div>
-        <div id="chatName"></div>
-        <small id="typing"></small>
+<!-- CHAT -->
+<section id="chatScreen">
+  <div class="app">
+    <aside class="sidebar">
+      <div class="side-header">
+        <b id="meName">—</b><br>
+        <small id="meStatus">offline</small>
       </div>
-    </header>
-    <div class="messages" id="messages"></div>
-    <div class="input">
-      <input id="text" placeholder="Mensagem..." />
-      <button id="send">➤</button>
-    </div>
+      <div class="list" id="convList"></div>
+    </aside>
+
+    <main class="chat">
+      <div class="chat-header">
+        <b id="chatName">Selecione uma conversa</b><br>
+        <small id="chatStatus"></small>
+      </div>
+      <div class="typing" id="typing"></div>
+      <div class="msgs" id="msgs"></div>
+      <div class="input">
+        <input id="text" placeholder="Mensagem..." disabled>
+        <button id="send" class="send" disabled>➤</button>
+      </div>
+    </main>
   </div>
-</div>
+</section>
 
 <script type="module">
-import { initializeApp } from "https://www.gstatic.com/firebasejs/9.23.0/firebase-app.js";
-import { getAuth, GoogleAuthProvider, signInWithPopup, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/9.23.0/firebase-auth.js";
-import { getFirestore, collection, doc, setDoc, addDoc, onSnapshot, query, where, orderBy, serverTimestamp, updateDoc } from "https://www.gstatic.com/firebasejs/9.23.0/firebase-firestore.js";
+import { initializeApp } from "https://www.gstatic.com/firebasejs/12.8.0/firebase-app.js";
+import { getAuth, GoogleAuthProvider, signInWithPopup, onAuthStateChanged, signOut } 
+  from "https://www.gstatic.com/firebasejs/12.8.0/firebase-auth.js";
+import { getDatabase, ref, set, push, onValue, serverTimestamp, update } 
+  from "https://www.gstatic.com/firebasejs/12.8.0/firebase-database.js";
 
+/* ===== FIREBASE CONFIG ===== */
 const firebaseConfig = {
   apiKey: "AIzaSyDwsERnH6Obpzc6Klt9r7IxDXWOkiaYSHU",
   authDomain: "sofi-chat.firebaseapp.com",
   projectId: "sofi-chat",
+  storageBucket: "sofi-chat.firebasestorage.app",
+  messagingSenderId: "533851013944",
+  appId: "1:533851013944:web:a49900cdde03ba01dd37cd"
 };
 
 const app = initializeApp(firebaseConfig);
-const auth = getAuth();
-const db = getFirestore();
+const auth = getAuth(app);
+const db = getDatabase(app);
+const provider = new GoogleAuthProvider();
 
-const login = document.getElementById("login");
-const appUI = document.getElementById("app");
+/* ===== ELEMENTOS ===== */
+const loginScreen = document.getElementById('loginScreen');
+const chatScreen  = document.getElementById('chatScreen');
+const googleBtn   = document.getElementById('googleLogin');
+const loginStatus = document.getElementById('loginStatus');
+const convList    = document.getElementById('convList');
+const msgs        = document.getElementById('msgs');
+const text        = document.getElementById('text');
+const sendBtn     = document.getElementById('send');
+const meName      = document.getElementById('meName');
+const meStatus    = document.getElementById('meStatus');
+const chatName    = document.getElementById('chatName');
+const chatStatus  = document.getElementById('chatStatus');
+const typingEl    = document.getElementById('typing');
 
-document.getElementById("googleLogin").onclick = async ()=>{
-  await signInWithPopup(auth,new GoogleAuthProvider());
+let me=null, currentConv=null;
+
+/* ===== LOGIN ===== */
+googleBtn.onclick = async ()=>{
+  try{ await signInWithPopup(auth, provider); }
+  catch(e){ loginStatus.innerText = e.message; }
 };
 
-let user, currentChat;
+/* ===== AUTH STATE ===== */
+onAuthStateChanged(auth, user=>{
+  if(!user){
+    loginScreen.style.display='flex';
+    chatScreen.style.display='none';
+    return;
+  }
+  me = { uid:user.uid, name:user.displayName || 'Usuário', email:user.email };
+  meName.innerText = me.name;
+  meStatus.innerText = 'online';
+  set(ref(db, 'users/'+me.uid), { ...me, online:true, last:serverTimestamp() });
 
-onAuthStateChanged(auth, async u=>{
-  if(!u) return;
-  user = u;
-  login.style.display="none";
-  appUI.style.display="flex";
+  loginScreen.style.display='none';
+  chatScreen.style.display='block';
 
-  await setDoc(doc(db,"users",u.uid),{
-    name:u.displayName,
-    photo:u.photoURL,
-    online:true,
-    lastSeen:serverTimestamp()
-  });
-
-  loadChats();
+  loadConversations();
 });
 
-function loadChats(){
-  const q = query(collection(db,"conversations"), where("users","array-contains",user.uid));
-  onSnapshot(q,snap=>{
-    conversations.innerHTML="";
-    snap.forEach(d=>{
-      const c=d.data();
-      const div=document.createElement("div");
-      div.innerText=c.lastMessage||"Nova conversa";
-      div.onclick=()=>openChat(d.id,c);
-      conversations.appendChild(div);
+/* ===== CONVERSAS 1x1 ===== */
+function loadConversations(){
+  onValue(ref(db,'conversations'), snap=>{
+    convList.innerHTML='';
+    snap.forEach(c=>{
+      const conv=c.val();
+      if(!conv.participants || !conv.participants.includes(me.uid)) return;
+      const div=document.createElement('div');
+      div.className='item'+(currentConv===conv.id?' active':'');
+      div.innerHTML=`<b>${conv.name}</b><span>${conv.last||''}</span>`;
+      div.onclick=()=>openConv(conv.id, conv.name);
+      convList.appendChild(div);
     });
   });
 }
 
-function openChat(id,c){
-  currentChat=id;
-  chatName.innerText=c.name;
-  messages.innerHTML="";
-  const q=query(collection(db,"conversations",id,"messages"),orderBy("createdAt"));
-  onSnapshot(q,s=>{
-    messages.innerHTML="";
-    s.forEach(m=>{
-      const d=m.data();
-      const div=document.createElement("div");
-      div.className="msg "+(d.from===user.uid?"me":"other");
-      div.innerText=d.text;
-      messages.appendChild(div);
+function openConv(id,name){
+  currentConv=id;
+  chatName.innerText=name;
+  chatStatus.innerText='';
+  msgs.innerHTML='';
+  text.disabled=false; sendBtn.disabled=false;
+
+  onValue(ref(db,'messages/'+id), snap=>{
+    msgs.innerHTML='';
+    snap.forEach(m=>{
+      const msg=m.val();
+      const div=document.createElement('div');
+      div.className='msg '+(msg.from===me.uid?'me':'other');
+      div.innerHTML=`${msg.text}<div class="meta">${msg.read?'✓✓':'✓'}</div>`;
+      msgs.appendChild(div);
+      if(msg.from!==me.uid){
+        update(ref(db,'messages/'+id+'/'+m.key),{read:true});
+      }
     });
+    msgs.scrollTop=msgs.scrollHeight;
   });
 }
 
-send.onclick=async ()=>{
-  if(!text.value) return;
-  await addDoc(collection(db,"conversations",currentChat,"messages"),{
-    text:text.value,
-    from:user.uid,
-    createdAt:serverTimestamp(),
-    seen:false
+/* ===== DIGITANDO ===== */
+text.oninput=()=>{
+  if(!currentConv) return;
+  set(ref(db,'typing/'+currentConv+'/'+me.uid), true);
+  setTimeout(()=>set(ref(db,'typing/'+currentConv+'/'+me.uid), false),800);
+};
+
+onValue(ref(db,'typing'), snap=>{
+  typingEl.innerText='';
+  if(!currentConv) return;
+  const t=snap.val()?.[currentConv]||{};
+  Object.keys(t).forEach(uid=>{
+    if(uid!==me.uid && t[uid]) typingEl.innerText='digitando…';
   });
-  await updateDoc(doc(db,"conversations",currentChat),{
-    lastMessage:text.value,
-    updatedAt:serverTimestamp()
-  });
-  text.value="";
+});
+
+/* ===== ENVIAR ===== */
+sendBtn.onclick=()=>{
+  if(!text.value.trim()||!currentConv) return;
+  const m={from:me.uid,text:text.value,ts:serverTimestamp(),read:false};
+  push(ref(db,'messages/'+currentConv), m);
+  update(ref(db,'conversations/'+currentConv),{last:text.value});
+  text.value='';
 };
 </script>
-
 </body>
-</html
+</html>
