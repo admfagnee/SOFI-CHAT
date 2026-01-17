@@ -1,312 +1,231 @@
 <!DOCTYPE html>
 <html lang="pt-BR">
 <head>
-  <meta charset="UTF-8">
-  <title>Sofi Chat</title>
-  <meta name="viewport" content="width=device-width, initial-scale=1">
-  <style>
-    body {
-      margin: 0;
-      font-family: Arial, sans-serif;
-      background: #0e1621;
-      color: #fff;
-    }
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>SOFI Chat</title>
 
-    header {
-      background: #17212b;
-      padding: 10px;
-      display: flex;
-      align-items: center;
-      gap: 10px;
-    }
+<style>
+:root{
+  --primary:#667eea;
+  --secondary:#764ba2;
+  --bg:#f5f7fa;
+}
 
-    header img {
-      width: 40px;
-      height: 40px;
-      border-radius: 50%;
-    }
+body{
+  margin:0;
+  font-family: system-ui, -apple-system, BlinkMacSystemFont;
+  background:var(--bg);
+}
 
-    #container {
-      display: flex;
-      height: calc(100vh - 60px);
-    }
+#login{
+  height:100vh;
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  background:linear-gradient(135deg,var(--primary),var(--secondary));
+}
 
-    #chatList {
-      width: 35%;
-      background: #17212b;
-      overflow-y: auto;
-      border-right: 1px solid #222;
-    }
+.login-box{
+  background:white;
+  padding:30px;
+  border-radius:16px;
+  text-align:center;
+  width:90%;
+  max-width:350px;
+}
 
-    .chat-item {
-      padding: 10px;
-      border-bottom: 1px solid #222;
-      cursor: pointer;
-    }
+button{
+  padding:12px 20px;
+  border:none;
+  border-radius:10px;
+  cursor:pointer;
+  background:linear-gradient(135deg,var(--primary),var(--secondary));
+  color:white;
+  font-weight:600;
+}
 
-    .chat-item:hover {
-      background: #1f2c3a;
-    }
+#app{
+  display:none;
+  height:100vh;
+}
 
-    #chat {
-      flex: 1;
-      display: flex;
-      flex-direction: column;
-    }
+.sidebar{
+  width:320px;
+  background:white;
+  border-right:1px solid #ddd;
+  overflow-y:auto;
+}
 
-    #messages {
-      flex: 1;
-      padding: 10px;
-      overflow-y: auto;
-    }
+.chat{
+  flex:1;
+  display:flex;
+  flex-direction:column;
+}
 
-    .msg {
-      margin-bottom: 8px;
-    }
+header{
+  padding:15px;
+  background:white;
+  border-bottom:1px solid #ddd;
+  display:flex;
+  align-items:center;
+  gap:10px;
+}
 
-    .me {
-      text-align: right;
-    }
+.messages{
+  flex:1;
+  padding:15px;
+  overflow-y:auto;
+}
 
-    .status {
-      font-size: 12px;
-      margin-left: 5px;
-      color: #4fc3f7;
-    }
+.msg{
+  max-width:70%;
+  margin-bottom:10px;
+  padding:10px 14px;
+  border-radius:18px;
+  font-size:14px;
+}
 
-    #typingStatus {
-      padding: 5px 10px;
-      font-size: 13px;
-      display: none;
-      color: #aaa;
-    }
+.me{
+  margin-left:auto;
+  background:linear-gradient(135deg,var(--primary),var(--secondary));
+  color:white;
+}
 
-    #inputArea {
-      display: flex;
-      padding: 10px;
-      background: #17212b;
-    }
+.other{
+  background:white;
+  box-shadow:0 2px 6px rgba(0,0,0,.1);
+}
 
-    #messageInput {
-      flex: 1;
-      padding: 8px;
-      border-radius: 5px;
-      border: none;
-    }
+.input{
+  display:flex;
+  padding:10px;
+  gap:10px;
+  background:white;
+}
 
-    button {
-      margin-left: 5px;
-      padding: 8px;
-      background: #4fc3f7;
-      border: none;
-      border-radius: 5px;
-      cursor: pointer;
-    }
-
-    button:hover {
-      background: #39a9dd;
-    }
-  </style>
+input{
+  flex:1;
+  padding:12px;
+  border-radius:20px;
+  border:1px solid #ccc;
+}
+</style>
 </head>
+
 <body>
 
-<header>
-  <img id="myPhoto">
-  <span id="myName"></span>
-  <button id="loginBtn">Login Google</button>
-</header>
+<div id="login">
+  <div class="login-box">
+    <h2>SOFI Chat</h2>
+    <button id="googleLogin">Entrar com Google</button>
+  </div>
+</div>
 
-<div id="container">
-  <div id="chatList"></div>
-
-  <div id="chat">
-    <div id="messages"></div>
-    <div id="typingStatus">Digitando...</div>
-    <div id="inputArea">
-      <input id="messageInput" placeholder="Digite uma mensagem">
-      <button id="sendBtn">Enviar</button>
+<div id="app" style="display:flex">
+  <div class="sidebar" id="conversations"></div>
+  <div class="chat">
+    <header>
+      <img id="chatPhoto" width="40" height="40" style="border-radius:50%">
+      <div>
+        <div id="chatName"></div>
+        <small id="typing"></small>
+      </div>
+    </header>
+    <div class="messages" id="messages"></div>
+    <div class="input">
+      <input id="text" placeholder="Mensagem..." />
+      <button id="send">➤</button>
     </div>
   </div>
 </div>
 
-<!-- FIREBASE -->
 <script type="module">
-  import { initializeApp } from "https://www.gstatic.com/firebasejs/12.8.0/firebase-app.js";
-  import {
-    getAuth,
-    signInWithPopup,
-    GoogleAuthProvider,
-    onAuthStateChanged
-  } from "https://www.gstatic.com/firebasejs/12.8.0/firebase-auth.js";
+import { initializeApp } from "https://www.gstatic.com/firebasejs/9.23.0/firebase-app.js";
+import { getAuth, GoogleAuthProvider, signInWithPopup, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/9.23.0/firebase-auth.js";
+import { getFirestore, collection, doc, setDoc, addDoc, onSnapshot, query, where, orderBy, serverTimestamp, updateDoc } from "https://www.gstatic.com/firebasejs/9.23.0/firebase-firestore.js";
 
-  import {
-    getFirestore,
-    collection,
-    doc,
-    setDoc,
-    getDoc,
-    getDocs,
-    addDoc,
-    updateDoc,
-    onSnapshot,
-    query,
-    where,
-    orderBy,
-    serverTimestamp,
-    arrayUnion
-  } from "https://www.gstatic.com/firebasejs/12.8.0/firebase-firestore.js";
+const firebaseConfig = {
+  apiKey: "AIzaSyDwsERnH6Obpzc6Klt9r7IxDXWOkiaYSHU",
+  authDomain: "sofi-chat.firebaseapp.com",
+  projectId: "sofi-chat",
+};
 
-  // 🔑 SUA CONFIG
-  const firebaseConfig = {
-    apiKey: "AIzaSyDwsERnH6Obpzc6Klt9r7IxDXWOkiaYSHU",
-    authDomain: "sofi-chat.firebaseapp.com",
-    projectId: "sofi-chat",
-    storageBucket: "sofi-chat.firebasestorage.app",
-    messagingSenderId: "533851013944",
-    appId: "1:533851013944:web:a49900cdde03ba01dd37cd"
-  };
+const app = initializeApp(firebaseConfig);
+const auth = getAuth();
+const db = getFirestore();
 
-  const app = initializeApp(firebaseConfig);
-  const auth = getAuth();
-  const db = getFirestore();
+const login = document.getElementById("login");
+const appUI = document.getElementById("app");
 
-  const loginBtn = document.getElementById("loginBtn");
-  const myPhoto = document.getElementById("myPhoto");
-  const myName = document.getElementById("myName");
-  const chatList = document.getElementById("chatList");
-  const messagesDiv = document.getElementById("messages");
-  const messageInput = document.getElementById("messageInput");
-  const sendBtn = document.getElementById("sendBtn");
-  const typingStatus = document.getElementById("typingStatus");
+document.getElementById("googleLogin").onclick = async ()=>{
+  await signInWithPopup(auth,new GoogleAuthProvider());
+};
 
-  let user;
-  let chatId;
-  let typingTimer;
+let user, currentChat;
 
-  loginBtn.onclick = async () => {
-    const provider = new GoogleAuthProvider();
-    await signInWithPopup(auth, provider);
-  };
+onAuthStateChanged(auth, async u=>{
+  if(!u) return;
+  user = u;
+  login.style.display="none";
+  appUI.style.display="flex";
 
-  onAuthStateChanged(auth, async (u) => {
-    if (!u) return;
-    user = u;
-
-    myPhoto.src = user.photoURL;
-    myName.innerText = user.displayName;
-    loginBtn.style.display = "none";
-
-    await setDoc(doc(db, "users", user.uid), {
-      name: user.displayName,
-      photoURL: user.photoURL,
-      online: true
-    }, { merge: true });
-
-    loadChats();
+  await setDoc(doc(db,"users",u.uid),{
+    name:u.displayName,
+    photo:u.photoURL,
+    online:true,
+    lastSeen:serverTimestamp()
   });
 
-  async function loadChats() {
-    const q = query(
-      collection(db, "chats"),
-      where("users", "array-contains", user.uid)
-    );
+  loadChats();
+});
 
-    onSnapshot(q, snap => {
-      chatList.innerHTML = "";
-      snap.forEach(docSnap => {
-        const chat = docSnap.data();
-        const div = document.createElement("div");
-        div.className = "chat-item";
-
-        const checks = chat.lastReadBy?.length > 0 ? "✔✔" : "✔";
-        div.innerText = `${chat.lastMessage || "Nova conversa"} ${checks}`;
-        div.onclick = () => openChat(docSnap.id, chat);
-        chatList.appendChild(div);
-      });
+function loadChats(){
+  const q = query(collection(db,"conversations"), where("users","array-contains",user.uid));
+  onSnapshot(q,snap=>{
+    conversations.innerHTML="";
+    snap.forEach(d=>{
+      const c=d.data();
+      const div=document.createElement("div");
+      div.innerText=c.lastMessage||"Nova conversa";
+      div.onclick=()=>openChat(d.id,c);
+      conversations.appendChild(div);
     });
-  }
-
-  function openChat(id, chat) {
-    if (!chat.users.includes(user.uid)) {
-      alert("Acesso negado");
-      return;
-    }
-
-    chatId = id;
-    messagesDiv.innerHTML = "";
-
-    onSnapshot(
-      query(
-        collection(db, "chats", chatId, "messages"),
-        orderBy("createdAt")
-      ),
-      snap => {
-        messagesDiv.innerHTML = "";
-        snap.forEach(docSnap => {
-          const msg = docSnap.data();
-          const div = document.createElement("div");
-          div.className = "msg " + (msg.sender === user.uid ? "me" : "");
-          div.innerText = msg.text;
-
-          if (msg.sender === user.uid) {
-            const s = document.createElement("span");
-            s.className = "status";
-            s.innerText = msg.readBy?.length ? "✔✔" : "✔";
-            div.appendChild(s);
-          } else if (!msg.readBy?.includes(user.uid)) {
-            updateDoc(doc(db, "chats", chatId, "messages", docSnap.id), {
-              readBy: arrayUnion(user.uid)
-            });
-          }
-
-          messagesDiv.appendChild(div);
-        });
-      }
-    );
-
-    onSnapshot(doc(db, "chats", chatId), snap => {
-      const typing = snap.data().typing || {};
-      const other = chat.users.find(u => u !== user.uid);
-      typingStatus.style.display = typing[other] ? "block" : "none";
-    });
-  }
-
-  sendBtn.onclick = async () => {
-    if (!chatId || !messageInput.value) return;
-
-    const text = messageInput.value;
-    messageInput.value = "";
-
-    await addDoc(collection(db, "chats", chatId, "messages"), {
-      text,
-      sender: user.uid,
-      createdAt: serverTimestamp(),
-      readBy: []
-    });
-
-    await updateDoc(doc(db, "chats", chatId), {
-      lastMessage: text,
-      lastSender: user.uid,
-      lastTimestamp: serverTimestamp(),
-      lastReadBy: [],
-      [`typing.${user.uid}`]: false
-    });
-  };
-
-  messageInput.addEventListener("input", async () => {
-    if (!chatId) return;
-
-    await updateDoc(doc(db, "chats", chatId), {
-      [`typing.${user.uid}`]: true
-    });
-
-    clearTimeout(typingTimer);
-    typingTimer = setTimeout(async () => {
-      await updateDoc(doc(db, "chats", chatId), {
-        [`typing.${user.uid}`]: false
-      });
-    }, 1500);
   });
+}
+
+function openChat(id,c){
+  currentChat=id;
+  chatName.innerText=c.name;
+  messages.innerHTML="";
+  const q=query(collection(db,"conversations",id,"messages"),orderBy("createdAt"));
+  onSnapshot(q,s=>{
+    messages.innerHTML="";
+    s.forEach(m=>{
+      const d=m.data();
+      const div=document.createElement("div");
+      div.className="msg "+(d.from===user.uid?"me":"other");
+      div.innerText=d.text;
+      messages.appendChild(div);
+    });
+  });
+}
+
+send.onclick=async ()=>{
+  if(!text.value) return;
+  await addDoc(collection(db,"conversations",currentChat,"messages"),{
+    text:text.value,
+    from:user.uid,
+    createdAt:serverTimestamp(),
+    seen:false
+  });
+  await updateDoc(doc(db,"conversations",currentChat),{
+    lastMessage:text.value,
+    updatedAt:serverTimestamp()
+  });
+  text.value="";
+};
 </script>
+
 </body>
 </html>
