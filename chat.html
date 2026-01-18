@@ -2,56 +2,125 @@
 <html lang="pt-BR">
 <head>
   <meta charset="UTF-8">
-  <title>SOFI Chat</title>
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>SOFI Chat</title>
   <link rel="stylesheet" href="estilo.css">
+  <script type="module" defer>
+    import { auth, db } from './firebase.js';
+    import { onAuthStateChanged, signOut } from "https://www.gstatic.com/firebasejs/12.8.0/firebase-auth.js";
+    import { collection, doc, getDoc, setDoc, onSnapshot, query, serverTimestamp, orderBy } from "https://www.gstatic.com/firebasejs/12.8.0/firebase-firestore.js";
+
+    let currentUser;
+
+    onAuthStateChanged(auth, async (user) => {
+      if (!user) {
+        window.location.href = "index.html";
+        return;
+      }
+      currentUser = user;
+
+      // Garantir que usuário completo
+      const userRef = doc(db, "users", user.uid);
+      const userSnap = await getDoc(userRef);
+      if (!userSnap.exists() || !userSnap.data().nome) {
+        // Redireciona para username se não estiver completo
+        localStorage.setItem('uidTemp', user.uid);
+        window.location.href = "username.html";
+        return;
+      }
+
+      // Atualiza online
+      await setDoc(userRef, { online: true, atualizadoEm: serverTimestamp() }, { merge: true });
+
+      carregarContatos();
+    });
+
+    // Lista de contatos
+    function carregarContatos() {
+      const usersCol = collection(db, "users");
+      const q = query(usersCol, orderBy("nome"));
+      onSnapshot(q, (snapshot) => {
+        const lista = document.getElementById("contatos");
+        lista.innerHTML = "";
+        snapshot.forEach(docSnap => {
+          const data = docSnap.data();
+          if (data.uid !== currentUser.uid && data.nome) { // só usuários completos
+            const li = document.createElement("li");
+            li.textContent = data.nome + (data.online ? " 🟢" : " ⚪");
+            li.dataset.uid = data.uid;
+            li.onclick = () => abrirChatCom(data.uid, data.nome);
+            lista.appendChild(li);
+          }
+        });
+      });
+    }
+
+    // Abrir chat 1x1
+    function abrirChatCom(uidDestino, nomeDestino) {
+      const chatContainer = document.getElementById("chat-container");
+      chatContainer.innerHTML = `<h2>Conversando com ${nomeDestino}</h2>
+                                 <div id="mensagens"></div>
+                                 <input type="text" id="mensagemInput" placeholder="Digite sua mensagem">
+                                 <button onclick="enviarMensagem('${uidDestino}')">Enviar</button>`;
+      carregarMensagens(uidDestino);
+    }
+
+    // Carregar mensagens entre currentUser e uidDestino
+    function carregarMensagens(uidDestino) {
+      const mensagensDiv = document.getElementById("mensagens");
+      const chatId = [currentUser.uid, uidDestino].sort().join("_"); // chat único 1x1
+      const chatCol = collection(db, "chats", chatId, "mensagens");
+      const q = query(chatCol, orderBy("timestamp"));
+
+      onSnapshot(q, snapshot => {
+        mensagensDiv.innerHTML = "";
+        snapshot.forEach(docSnap => {
+          const m = docSnap.data();
+          const p = document.createElement("p");
+          p.textContent = `${m.de === currentUser.uid ? "Você" : "Outro"}: ${m.texto}`;
+          mensagensDiv.appendChild(p);
+        });
+        mensagensDiv.scrollTop = mensagensDiv.scrollHeight;
+      });
+    }
+
+    // Enviar mensagem
+    async function enviarMensagem(uidDestino) {
+      const input = document.getElementById("mensagemInput");
+      const texto = input.value.trim();
+      if (!texto) return;
+      input.value = "";
+
+      const chatId = [currentUser.uid, uidDestino].sort().join("_");
+      const msgRef = doc(collection(db, "chats", chatId, "mensagens"));
+      await setDoc(msgRef, {
+        texto,
+        de: currentUser.uid,
+        para: uidDestino,
+        timestamp: serverTimestamp()
+      });
+    }
+
+    // Logout
+    function sair() {
+      signOut(auth);
+      window.location.href = "index.html";
+    }
+
+    window.sair = sair;
+    window.enviarMensagem = enviarMensagem;
+  </script>
 </head>
-
 <body>
-
-<header class="topo">
-  <h1>SOFI Chat</h1>
-  <button id="sair">Sair</button>
-</header>
-
-<main class="container">
-
-  <!-- CONTATOS -->
-  <aside class="contatos-area">
-    <h2>Usuários</h2>
-
-    <input
-      type="text"
-      id="buscarUsuario"
-      placeholder="Buscar por nome"
-    />
-
-    <div id="contatos"></div>
-  </aside>
-
-  <!-- CHAT -->
-  <section class="chat-area">
-
-    <div class="chat-header">
-      <span id="usuarioSelecionado">Selecione um usuário</span>
-      <button id="btnAmigo">Adicionar amigo</button>
+  <div class="top-bar">
+    <h1>SOFI Chat</h1>
+    <button onclick="sair()">Sair</button>
+  </div>
+  <div class="main-container">
+    <ul id="contatos"></ul>
+    <div id="chat-container">
+      <p>Selecione um contato para iniciar a conversa</p>
     </div>
-
-    <div id="bioUsuario" class="bio"></div>
-
-    <div id="mensagens" class="mensagens"></div>
-
-    <div class="enviar-area">
-      <input type="text" id="mensagem" placeholder="Digite uma mensagem">
-      <button id="enviar">Enviar</button>
-    </div>
-
-  </section>
-
-</main>
-
-<script type="module" src="firebase.js"></script>
-<script type="module" src="chat.js"></script>
-
+  </div>
 </body>
 </html>
