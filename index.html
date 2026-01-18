@@ -1,214 +1,62 @@
 <!DOCTYPE html>
 <html lang="pt-BR">
 <head>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>SOFI Chat</title>
-<style>
-/* Reset básico */
-* {margin:0;padding:0;box-sizing:border-box;}
-body {font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Oxygen,Ubuntu,Cantarell,sans-serif;background:#f5f7fa;height:100vh;overflow:hidden;}
+  <meta charset="UTF-8" />
+  <title>SOFI CHAT – Login</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
 
-/* Telas */
-.screen {display:none;height:100vh;width:100%;}
-.screen.active{display:flex;justify-content:center;align-items:center;flex-direction:column;}
-button{cursor:pointer;font-weight:bold;}
+  <!-- CSS -->
+  <link rel="stylesheet" href="style.css" />
 
-/* Login */
-#loginScreen {background:linear-gradient(135deg,#667eea 0%,#764ba2 100%);color:white;flex-direction:column;justify-content:center;}
-#loginScreen button{background:white;color:#764ba2;padding:1rem 2rem;border:none;border-radius:12px;font-size:1rem;margin-top:1rem;}
+  <!-- Firebase -->
+  <script type="module">
+    import { initializeApp } from "https://www.gstatic.com/firebasejs/12.8.0/firebase-app.js";
+    import { getAuth, GoogleAuthProvider, signInWithPopup, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/12.8.0/firebase-auth.js";
 
-/* Username */
-#usernameScreen {background:#f5f7fa;flex-direction:column;}
-#usernameScreen input{padding:1rem;width:250px;margin-bottom:1rem;border-radius:8px;border:1px solid #ccc;font-size:1rem;}
+    const firebaseConfig = {
+      apiKey: "AIzaSyDwsERnH6Obpzc6Klt9r7IxDXWOkiaYSHU",
+      authDomain: "sofi-chat.firebaseapp.com",
+      projectId: "sofi-chat",
+      storageBucket: "sofi-chat.firebasestorage.app",
+      messagingSenderId: "533851013944",
+      appId: "1:533851013944:web:a49900cdde03ba01dd37cd"
+    };
 
-/* Chat */
-#mainScreen{display:flex;width:100%;height:100vh;}
-.sidebar{width:300px;background:white;border-right:1px solid #e0e0e0;display:flex;flex-direction:column;}
-.chat-area{flex:1;display:flex;flex-direction:column;background:#f5f7fa;}
-.messages-container{flex:1;overflow-y:auto;padding:1rem;}
-.message{padding:0.5rem 1rem;border-radius:12px;margin-bottom:0.5rem;max-width:70%;}
-.message.sent{background:linear-gradient(135deg,#667eea,#764ba2);color:white;margin-left:auto;border-bottom-right-radius:4px;}
-.message.received{background:white;color:#333;margin-right:auto;border-bottom-left-radius:4px;box-shadow:0 2px 5px rgba(0,0,0,0.1);}
-.message-input-wrapper{display:flex;padding:1rem;border-top:1px solid #e0e0e0;}
-.message-input-wrapper input{flex:1;padding:0.75rem;border-radius:25px;border:1px solid #ccc;margin-right:0.5rem;}
-.message-input-wrapper button{padding:0.75rem 1rem;border-radius:50%;background:linear-gradient(135deg,#667eea,#764ba2);color:white;border:none;}
-.contact{padding:0.5rem 1rem;border-bottom:1px solid #eee;cursor:pointer;}
-.contact:hover{background:#f0f0f0;}
-</style>
-</head>
-<body>
+    const app = initializeApp(firebaseConfig);
+    const auth = getAuth(app);
+    const provider = new GoogleAuthProvider();
 
-<!-- Login -->
-<div id="loginScreen" class="screen active">
-<h1>SOFI Chat</h1>
-<p>Entrar com Google para continuar</p>
-<button id="googleLoginBtn">Entrar com Google</button>
-</div>
-
-<!-- Username -->
-<div id="usernameScreen" class="screen">
-<h2>Bem-vindo! Escolha um nome</h2>
-<input type="text" id="usernameInput" placeholder="Seu nome">
-<button id="saveUsernameBtn">Salvar</button>
-</div>
-
-<!-- Chat principal -->
-<div id="mainScreen" class="screen">
-<div class="sidebar">
-<h3>Contatos</h3>
-<div id="contactsList"></div>
-</div>
-<div class="chat-area">
-<div class="messages-container" id="messagesContainer"></div>
-<div class="message-input-wrapper">
-<input type="text" id="messageInput" placeholder="Digite uma mensagem...">
-<button id="sendBtn">➤</button>
-</div>
-</div>
-</div>
-
-<!-- Firebase v12 modular -->
-<script type="module">
-import { initializeApp } from "https://www.gstatic.com/firebasejs/12.8.0/firebase-app.js";
-import { getAuth, signInWithPopup, GoogleAuthProvider, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/12.8.0/firebase-auth.js";
-import { getDatabase, ref, set, get, push, onValue } from "https://www.gstatic.com/firebasejs/12.8.0/firebase-database.js";
-
-// Firebase config
-const firebaseConfig = {
-  apiKey: "AIzaSyDwsERnH6Obpzc6Klt9r7IxDXWOkiaYSHU",
-  authDomain: "sofi-chat.firebaseapp.com",
-  projectId: "sofi-chat",
-  storageBucket: "sofi-chat.firebasestorage.app",
-  messagingSenderId: "533851013944",
-  appId: "1:533851013944:web:a49900cdde03ba01dd37cd"
-};
-
-// Inicializa Firebase
-const app = initializeApp(firebaseConfig);
-const auth = getAuth();
-const db = getDatabase(app);
-const provider = new GoogleAuthProvider();
-
-// Screens
-const loginScreen = document.getElementById('loginScreen');
-const usernameScreen = document.getElementById('usernameScreen');
-const mainScreen = document.getElementById('mainScreen');
-const googleLoginBtn = document.getElementById('googleLoginBtn');
-const saveUsernameBtn = document.getElementById('saveUsernameBtn');
-const usernameInput = document.getElementById('usernameInput');
-const contactsList = document.getElementById('contactsList');
-const messagesContainer = document.getElementById('messagesContainer');
-const messageInput = document.getElementById('messageInput');
-const sendBtn = document.getElementById('sendBtn');
-
-let currentUser = null;
-let currentChatId = null;
-let isAuthInitialized = false;
-
-// Função para mostrar tela
-function showScreen(screen){
-  loginScreen.classList.remove('active');
-  usernameScreen.classList.remove('active');
-  mainScreen.classList.remove('active');
-  screen.classList.add('active');
-}
-
-// LOGIN Google
-googleLoginBtn.onclick = async () => {
-  try{
-    await signInWithPopup(auth, provider);
-  }catch(err){
-    console.error(err);
-    alert('Erro ao logar com Google');
-  }
-}
-
-// Salvar username
-saveUsernameBtn.onclick = async () => {
-  const username = usernameInput.value.trim();
-  if(!username) return alert('Digite um nome');
-  const userRef = ref(db,'users/'+currentUser.uid);
-  await set(userRef,{username:username});
-  currentUser.username = username;
-  showScreen(mainScreen);
-  loadContacts();
-}
-
-// Observa autenticação
-onAuthStateChanged(auth, async (user) => {
-  if(isAuthInitialized) return;
-  isAuthInitialized = true;
-
-  if(!user){
-    showScreen(loginScreen);
-    return;
-  }
-
-  currentUser = {uid:user.uid,email:user.email};
-
-  const userRef = ref(db,'users/'+currentUser.uid);
-  try{
-    const snapshot = await get(userRef);
-    if(snapshot.exists() && snapshot.val().username){
-      currentUser.username = snapshot.val().username;
-      showScreen(mainScreen);
-      loadContacts();
-    }else{
-      showScreen(usernameScreen);
-    }
-  }catch(err){
-    console.error(err);
-    showScreen(loginScreen);
-  }
-});
-
-// Carrega contatos
-function loadContacts(){
-  const usersRef = ref(db,'users');
-  onValue(usersRef,(snapshot)=>{
-    contactsList.innerHTML='';
-    snapshot.forEach(userSnap=>{
-      const userData = userSnap.val();
-      if(userSnap.key !== currentUser.uid){
-        const div = document.createElement('div');
-        div.classList.add('contact');
-        div.textContent = userData.username;
-        div.onclick = () => openChat(userSnap.key,userData.username);
-        contactsList.appendChild(div);
+    // BOTÃO LOGIN
+    window.loginGoogle = async () => {
+      try {
+        await signInWithPopup(auth, provider);
+      } catch (error) {
+        alert("Erro no login: " + error.message);
       }
-    });
-  });
-}
+    };
 
-// Abrir chat 1x1
-function openChat(otherUid,otherName){
-  currentChatId = [currentUser.uid,otherUid].sort().join('_');
-  messagesContainer.innerHTML='';
-  const messagesRef = ref(db,'messages/'+currentChatId);
-  onValue(messagesRef,(snapshot)=>{
-    messagesContainer.innerHTML='';
-    snapshot.forEach(msgSnap=>{
-      const msg = msgSnap.val();
-      const div = document.createElement('div');
-      div.classList.add('message',msg.sender===currentUser.uid?'sent':'received');
-      div.textContent = msg.text;
-      messagesContainer.appendChild(div);
+    // CONTROLE DE SESSÃO (ANTI LOOP)
+    onAuthStateChanged(auth, (user) => {
+      if (user) {
+        // Usuário logado → vai para o chat
+        window.location.href = "chat.html";
+      }
+      // Se não estiver logado, permanece aqui
     });
-    messagesContainer.scrollTop = messagesContainer.scrollHeight;
-  });
-}
+  </script>
+</head>
 
-// Enviar mensagem
-sendBtn.onclick = async () => {
-  if(!currentChatId) return;
-  const text = messageInput.value.trim();
-  if(!text) return;
-  const messagesRef = ref(db,'messages/'+currentChatId);
-  await push(messagesRef,{sender:currentUser.uid,text:text,time:Date.now()});
-  messageInput.value='';
-}
-</script>
+<body class="login-body">
+
+  <div class="login-container">
+    <img src="logo.png" alt="SOFI CHAT" class="login-logo" />
+
+    <h2>Bem-vindo ao SOFI CHAT</h2>
+
+    <button class="login-btn" onclick="loginGoogle()">
+      Entrar com Google
+    </button>
+  </div>
 
 </body>
 </html>
