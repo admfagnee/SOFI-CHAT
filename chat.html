@@ -1,67 +1,223 @@
 <!DOCTYPE html>
 <html lang="pt-BR">
 <head>
-  <meta charset="UTF-8" />
-  <title>SOFI CHAT</title>
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta charset="UTF-8">
+  <title>SOFI Chat</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
 
-  <!-- CSS -->
-  <link rel="stylesheet" href="style.css" />
+  <style>
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+      font-family: system-ui, sans-serif;
+    }
 
-  <!-- Firebase + Auth check -->
-  <script type="module">
-    import { initializeApp } from "https://www.gstatic.com/firebasejs/12.8.0/firebase-app.js";
-    import { getAuth, onAuthStateChanged, signOut } from "https://www.gstatic.com/firebasejs/12.8.0/firebase-auth.js";
+    body {
+      display: flex;
+      height: 100vh;
+      background: #f5f7fa;
+    }
 
-    const firebaseConfig = {
-      apiKey: "AIzaSyDwsERnH6Obpzc6Klt9r7IxDXWOkiaYSHU",
-      authDomain: "sofi-chat.firebaseapp.com",
-      projectId: "sofi-chat",
-      storageBucket: "sofi-chat.firebasestorage.app",
-      messagingSenderId: "533851013944",
-      appId: "1:533851013944:web:a49900cdde03ba01dd37cd"
-    };
+    .sidebar {
+      width: 300px;
+      border-right: 1px solid #ddd;
+      background: #fff;
+      overflow-y: auto;
+    }
 
-    const app = initializeApp(firebaseConfig);
-    const auth = getAuth(app);
+    .sidebar h2 {
+      padding: 16px;
+      background: linear-gradient(135deg, #667eea, #764ba2);
+      color: white;
+    }
 
-    // PROTEÇÃO DA PÁGINA
-    onAuthStateChanged(auth, (user) => {
-      if (!user) {
-        window.location.href = "index.html";
-      } else {
-        document.getElementById("userName").innerText = user.displayName;
-      }
-    });
+    .user {
+      padding: 12px 16px;
+      border-bottom: 1px solid #eee;
+      cursor: pointer;
+    }
 
-    // LOGOUT
-    window.logout = async () => {
-      await signOut(auth);
-      window.location.href = "index.html";
-    };
-  </script>
+    .user:hover {
+      background: #f0f0f0;
+    }
+
+    .chat {
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+    }
+
+    .chat-header {
+      padding: 16px;
+      border-bottom: 1px solid #ddd;
+      background: #fff;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+
+    .messages {
+      flex: 1;
+      padding: 16px;
+      overflow-y: auto;
+      background: #eef1f7;
+    }
+
+    .message {
+      margin-bottom: 10px;
+      max-width: 70%;
+      padding: 10px 14px;
+      border-radius: 14px;
+      background: white;
+    }
+
+    .sent {
+      margin-left: auto;
+      background: linear-gradient(135deg, #667eea, #764ba2);
+      color: white;
+    }
+
+    .input-area {
+      padding: 10px;
+      background: #fff;
+      display: flex;
+      gap: 10px;
+      border-top: 1px solid #ddd;
+    }
+
+    input {
+      flex: 1;
+      padding: 10px;
+      border-radius: 20px;
+      border: 1px solid #ccc;
+    }
+
+    button {
+      padding: 10px 16px;
+      border: none;
+      border-radius: 20px;
+      background: linear-gradient(135deg, #667eea, #764ba2);
+      color: white;
+      cursor: pointer;
+    }
+  </style>
 </head>
 
-<body class="chat-body">
+<body>
 
-  <div class="chat-header">
-    <span>SOFI CHAT</span>
-    <button onclick="logout()" style="float:right;background:none;border:none;color:white;">
-      Sair
-    </button>
+  <div class="sidebar">
+    <h2>SOFI</h2>
+    <div id="users"></div>
   </div>
 
-  <div class="chat-container">
-    <p style="color:#94a3b8;text-align:center;">
-      Chat carregado com sucesso.<br>
-      Próximo passo: contatos e mensagens.
-    </p>
+  <div class="chat">
+    <div class="chat-header">
+      <div id="chatWith">Selecione um usuário</div>
+      <button onclick="logout()">Sair</button>
+    </div>
+
+    <div class="messages" id="messages"></div>
+
+    <div class="input-area">
+      <input id="messageInput" placeholder="Digite uma mensagem..." disabled>
+      <button onclick="sendMessage()" disabled id="sendBtn">Enviar</button>
+    </div>
   </div>
 
-  <div class="chat-input">
-    <input type="text" placeholder="Digite uma mensagem..." disabled />
-    <button disabled>Enviar</button>
-  </div>
+  <!-- Firebase base -->
+  <script type="module" src="./firebase.js"></script>
+
+  <!-- Auth -->
+  <script type="module" src="./auth.js"></script>
+
+  <!-- Chat logic -->
+  <script type="module">
+    import { auth, db } from "./firebase.js";
+    import {
+      collection,
+      query,
+      onSnapshot,
+      addDoc,
+      orderBy,
+      where
+    } from "https://www.gstatic.com/firebasejs/12.8.0/firebase-firestore.js";
+
+    let currentUser = null;
+    let selectedUser = null;
+
+    auth.onAuthStateChanged(user => {
+      if (!user) return;
+      currentUser = user;
+      loadUsers();
+    });
+
+    function getChatId(uid1, uid2) {
+      return [uid1, uid2].sort().join("_");
+    }
+
+    function loadUsers() {
+      const q = query(collection(db, "users"));
+      onSnapshot(q, snapshot => {
+        const usersDiv = document.getElementById("users");
+        usersDiv.innerHTML = "";
+
+        snapshot.forEach(doc => {
+          if (doc.id === currentUser.uid) return;
+
+          const u = doc.data();
+          const div = document.createElement("div");
+          div.className = "user";
+          div.textContent = u.name;
+          div.onclick = () => openChat(doc.id, u.name);
+          usersDiv.appendChild(div);
+        });
+      });
+    }
+
+    function openChat(uid, name) {
+      selectedUser = uid;
+      document.getElementById("chatWith").innerText = name;
+      document.getElementById("messageInput").disabled = false;
+      document.getElementById("sendBtn").disabled = false;
+
+      const chatId = getChatId(currentUser.uid, uid);
+      const q = query(
+        collection(db, "chats", chatId, "messages"),
+        orderBy("createdAt")
+      );
+
+      onSnapshot(q, snapshot => {
+        const msgDiv = document.getElementById("messages");
+        msgDiv.innerHTML = "";
+
+        snapshot.forEach(doc => {
+          const m = doc.data();
+          const d = document.createElement("div");
+          d.className = "message " + (m.from === currentUser.uid ? "sent" : "");
+          d.textContent = m.text;
+          msgDiv.appendChild(d);
+        });
+
+        msgDiv.scrollTop = msgDiv.scrollHeight;
+      });
+    }
+
+    window.sendMessage = async function () {
+      const input = document.getElementById("messageInput");
+      if (!input.value || !selectedUser) return;
+
+      const chatId = getChatId(currentUser.uid, selectedUser);
+
+      await addDoc(collection(db, "chats", chatId, "messages"), {
+        text: input.value,
+        from: currentUser.uid,
+        createdAt: new Date()
+      });
+
+      input.value = "";
+    };
+  </script>
 
 </body>
 </html>
