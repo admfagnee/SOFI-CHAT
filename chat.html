@@ -1,107 +1,57 @@
-import { auth, db } from "./firebase.js";
-import {
-  collection,
-  doc,
-  setDoc,
-  getDocs,
-  onSnapshot,
-  query,
-  serverTimestamp
-} from "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js";
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8">
+  <title>SOFI Chat</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <link rel="stylesheet" href="estilo.css">
+</head>
 
-import {
-  onAuthStateChanged,
-  signOut
-} from "https://www.gstatic.com/firebasejs/10.7.1/firebase-auth.js";
+<body>
 
-const contatosDiv = document.getElementById("contatos");
-const btnSair = document.getElementById("sair");
+<header class="topo">
+  <h1>SOFI Chat</h1>
+  <button id="sair">Sair</button>
+</header>
 
-let usuarioAtual = null;
+<main class="container">
 
-/* ==========================
-   AUTENTICAÇÃO
-========================== */
-onAuthStateChanged(auth, async (user) => {
-  if (!user) {
-    window.location.href = "index.html";
-    return;
-  }
+  <!-- CONTATOS -->
+  <aside class="contatos-area">
+    <h2>Usuários</h2>
 
-  usuarioAtual = user;
-  await salvarUsuario(user);
-  carregarUsuarios();
-});
+    <input
+      type="text"
+      id="buscarUsuario"
+      placeholder="Buscar por nome"
+    />
 
-/* ==========================
-   SALVAR / ATUALIZAR USUÁRIO
-========================== */
-async function salvarUsuario(user) {
-  const userRef = doc(db, "users", user.uid);
+    <div id="contatos"></div>
+  </aside>
 
-  await setDoc(
-    userRef,
-    {
-      uid: user.uid,
-      nome: user.displayName || "Usuário",
-      email: user.email,
-      online: true,
-      atualizadoEm: serverTimestamp(),
-      // CAMPOS FUTUROS (NÃO REMOVER)
-      cidade: "",
-      estado: "",
-      bio: "",
-      amigos: []
-    },
-    { merge: true }
-  );
-}
+  <!-- CHAT -->
+  <section class="chat-area">
 
-/* ==========================
-   CARREGAR LISTA DE USUÁRIOS
-========================== */
-function carregarUsuarios() {
-  const usersRef = collection(db, "users");
+    <div class="chat-header">
+      <span id="usuarioSelecionado">Selecione um usuário</span>
+      <button id="btnAmigo">Adicionar amigo</button>
+    </div>
 
-  onSnapshot(usersRef, (snapshot) => {
-    contatosDiv.innerHTML = "";
+    <div id="bioUsuario" class="bio"></div>
 
-    snapshot.forEach((docSnap) => {
-      const user = docSnap.data();
+    <div id="mensagens" class="mensagens"></div>
 
-      // NÃO mostrar o próprio usuário
-      if (user.uid === usuarioAtual.uid) return;
+    <div class="enviar-area">
+      <input type="text" id="mensagem" placeholder="Digite uma mensagem">
+      <button id="enviar">Enviar</button>
+    </div>
 
-      const div = document.createElement("div");
-      div.className = "contato";
-      div.innerHTML = `
-        <strong>${user.nome}</strong><br>
-        <small>${user.email}</small><br>
-        <small style="color:${user.online ? "green" : "gray"}">
-          ${user.online ? "Online" : "Offline"}
-        </small>
-      `;
+  </section>
 
-      contatosDiv.appendChild(div);
-    });
-  });
-}
+</main>
 
-/* ==========================
-   LOGOUT
-========================== */
-btnSair.addEventListener("click", async () => {
-  if (usuarioAtual) {
-    await setDoc(
-      doc(db, "users", usuarioAtual.uid),
-      {
-        online: false,
-        atualizadoEm: serverTimestamp()
-      },
-      { merge: true }
-    );
-  }
+<script type="module" src="firebase.js"></script>
+<script type="module" src="chat.js"></script>
 
-  await signOut(auth);
-  window.location.href = "index.html";
-});
+</body>
+</html>
