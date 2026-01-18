@@ -2,117 +2,65 @@
 <html lang="pt-BR">
 <head>
   <meta charset="UTF-8">
-  <title>SOFI Chat - Login</title>
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>SOFI Chat - Login</title>
+  <link rel="stylesheet" href="estilo.css">
+  <script type="module" defer>
+    import { auth, db } from './firebase.js';
+    import { GoogleAuthProvider, signInWithPopup, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/12.8.0/firebase-auth.js";
+    import { doc, getDoc, setDoc, serverTimestamp } from "https://www.gstatic.com/firebasejs/12.8.0/firebase-firestore.js";
 
-  <style>
-    body {
-      margin: 0;
-      font-family: Arial, sans-serif;
-      background: #0f172a;
-      color: #fff;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      height: 100vh;
-    }
-
-    .login-box {
-      background: #020617;
-      padding: 30px;
-      border-radius: 10px;
-      width: 100%;
-      max-width: 360px;
-      text-align: center;
-      box-shadow: 0 0 20px rgba(0,0,0,.5);
-    }
-
-    h1 {
-      margin-bottom: 10px;
-      font-size: 24px;
-    }
-
-    p {
-      font-size: 14px;
-      opacity: 0.8;
-    }
-
-    button {
-      margin-top: 20px;
-      width: 100%;
-      padding: 12px;
-      border: none;
-      border-radius: 6px;
-      font-size: 16px;
-      cursor: pointer;
-      background: #2563eb;
-      color: #fff;
-    }
-
-    button:hover {
-      background: #1d4ed8;
-    }
-
-    .error {
-      margin-top: 15px;
-      color: #f87171;
-      font-size: 14px;
-    }
-  </style>
-</head>
-
-<body>
-
-  <div class="login-box">
-    <h1>SOFI Chat</h1>
-    <p>Entre com sua conta Google</p>
-
-    <button id="loginGoogle">
-      Entrar com Google
-    </button>
-
-    <div id="error" class="error"></div>
-  </div>
-
-  <!-- Firebase -->
-  <script type="module">
-    import { initializeApp } from "https://www.gstatic.com/firebasejs/12.8.0/firebase-app.js";
-    import { getAuth, GoogleAuthProvider, signInWithPopup } from "https://www.gstatic.com/firebasejs/12.8.0/firebase-auth.js";
-
-    // 🔐 Configuração do Firebase
-    const firebaseConfig = {
-      apiKey: "AIzaSyDwsERnH6Obpzc6Klt9r7IxDXWOkiaYSHU",
-      authDomain: "sofi-chat.firebaseapp.com",
-      projectId: "sofi-chat",
-      storageBucket: "sofi-chat.firebasestorage.app",
-      messagingSenderId: "533851013944",
-      appId: "1:533851013944:web:a49900cdde03ba01dd37cd"
-    };
-
-    // Inicializa Firebase (UMA ÚNICA VEZ)
-    const app = initializeApp(firebaseConfig);
-    const auth = getAuth(app);
     const provider = new GoogleAuthProvider();
 
-    const loginBtn = document.getElementById("loginGoogle");
-    const errorDiv = document.getElementById("error");
-
-    loginBtn.addEventListener("click", async () => {
-      errorDiv.textContent = "";
-
+    async function loginGoogle() {
       try {
-        // 🔑 LOGIN
-        await signInWithPopup(auth, provider);
+        const result = await signInWithPopup(auth, provider);
+        const user = result.user;
 
-        // ✅ LOGIN CONFIRMADO → REDIRECIONA
+        // Referência do usuário no Firestore
+        const userRef = doc(db, "users", user.uid);
+        const userSnap = await getDoc(userRef);
+
+        // Se o usuário não existir ou estiver incompleto, abrir tela de username
+        if (!userSnap.exists() || !userSnap.data().nome) {
+          // Redireciona para a tela de username
+          localStorage.setItem('uidTemp', user.uid); // armazena UID temporariamente
+          window.location.href = "username.html";
+          return;
+        }
+
+        // Se já existir, garante que online seja true
+        await setDoc(userRef, { online: true, atualizadoEm: serverTimestamp() }, { merge: true });
+
+        // Redireciona para o chat
         window.location.href = "chat.html";
 
       } catch (error) {
-        console.error(error);
-        errorDiv.textContent = "Erro ao fazer login. Tente novamente.";
+        console.error("Erro ao fazer login:", error);
+        alert("Erro ao entrar com Google. Tente novamente.");
+      }
+    }
+
+    onAuthStateChanged(auth, async (user) => {
+      if (user) {
+        const userRef = doc(db, "users", user.uid);
+        const userSnap = await getDoc(userRef);
+
+        if (!userSnap.exists() || !userSnap.data().nome) {
+          localStorage.setItem('uidTemp', user.uid);
+          window.location.href = "username.html";
+        } else {
+          await setDoc(userRef, { online: true, atualizadoEm: serverTimestamp() }, { merge: true });
+          window.location.href = "chat.html";
+        }
       }
     });
   </script>
-
+</head>
+<body>
+  <div class="login-container">
+    <h1>Bem-vindo ao SOFI Chat</h1>
+    <button onclick="loginGoogle()">Entrar com Google</button>
+  </div>
 </body>
 </html>
