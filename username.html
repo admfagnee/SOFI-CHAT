@@ -5,12 +5,23 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>SOFI Chat - Defina seu username</title>
   <link rel="stylesheet" href="estilo.css">
-  <script type="module" defer>
+</head>
+<body>
+  <div class="username-container">
+    <h1>Defina seu usuário</h1>
+    <input type="text" id="inputNome" placeholder="Nome de usuário">
+    <textarea id="inputBio" placeholder="Bio (opcional)"></textarea>
+    <button id="btnSalvar" disabled>Salvar e continuar</button>
+  </div>
+
+  <script type="module">
     import { db, auth } from './firebase.js';
     import { doc, setDoc, serverTimestamp } from "https://www.gstatic.com/firebasejs/12.8.0/firebase-firestore.js";
     import { onAuthStateChanged } from "https://www.gstatic.com/firebasejs/12.8.0/firebase-auth.js";
 
     let currentUser;
+
+    const btn = document.getElementById("btnSalvar");
 
     onAuthStateChanged(auth, (user) => {
       if (!user) {
@@ -19,12 +30,15 @@
       }
       currentUser = user;
 
-      // Preenche campo nome com o displayName do Google como sugestão
+      // Ativa botão apenas quando usuário estiver carregado
+      btn.disabled = false;
+
+      // Sugere nome de usuário baseado no displayName do Google
       const inputNome = document.getElementById("inputNome");
       if (user.displayName) inputNome.value = user.displayName;
     });
 
-    async function salvarUsername() {
+    btn.addEventListener("click", async () => {
       const nome = document.getElementById("inputNome").value.trim();
       const bio = document.getElementById("inputBio").value.trim();
 
@@ -46,15 +60,7 @@
 
       // Redireciona para chat
       window.location.href = "chat.html";
-    }
+    });
   </script>
-</head>
-<body>
-  <div class="username-container">
-    <h1>Defina seu usuário</h1>
-    <input type="text" id="inputNome" placeholder="Nome de usuário">
-    <textarea id="inputBio" placeholder="Bio (opcional)"></textarea>
-    <button onclick="salvarUsername()">Salvar e continuar</button>
-  </div>
 </body>
 </html>
