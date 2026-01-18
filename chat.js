@@ -1,23 +1,28 @@
-<script type="module">
+// ===============================
+// Firebase imports (v9+)
+// ===============================
 import { initializeApp } from "https://www.gstatic.com/firebasejs/12.8.0/firebase-app.js";
 import {
+  getAuth,
+  onAuthStateChanged,
+  signOut
+} from "https://www.gstatic.com/firebasejs/12.8.0/firebase-auth.js";
+import {
   getFirestore,
-  collection,
   doc,
   setDoc,
-  getDocs,
-  addDoc,
+  collection,
   query,
+  where,
+  addDoc,
   orderBy,
   onSnapshot,
   serverTimestamp
 } from "https://www.gstatic.com/firebasejs/12.8.0/firebase-firestore.js";
-import {
-  getAuth,
-  onAuthStateChanged
-} from "https://www.gstatic.com/firebasejs/12.8.0/firebase-auth.js";
 
-/* CONFIG */
+// ===============================
+// Firebase config (SEU PROJETO)
+// ===============================
 const firebaseConfig = {
   apiKey: "AIzaSyDwsERnH6Obpzc6Klt9r7IxDXWOkiaYSHU",
   authDomain: "sofi-chat.firebaseapp.com",
@@ -27,95 +32,161 @@ const firebaseConfig = {
   appId: "1:533851013944:web:a49900cdde03ba01dd37cd"
 };
 
+// ===============================
+// Init Firebase
+// ===============================
 const app = initializeApp(firebaseConfig);
-const db = getFirestore(app);
 const auth = getAuth(app);
+const db = getFirestore(app);
+
+// ===============================
+// DOM
+// ===============================
+const contactList = document.getElementById("contactList");
+const messagesDiv = document.getElementById("messages");
+const messageInput = document.getElementById("messageInput");
+const sendBtn = document.getElementById("sendBtn");
+const logoutBtn = document.getElementById("logoutBtn");
 
 let currentUser = null;
-let currentChatId = null;
+let selectedUser = null;
+let unsubscribeMessages = null;
 
-/* USUÁRIO LOGADO */
+// ===============================
+// AUTH STATE
+// ===============================
 onAuthStateChanged(auth, async (user) => {
-  if (!user) return;
+  if (!user) {
+    window.location.href = "index.html";
+    return;
+  }
 
   currentUser = user;
 
-  // salva usuário no banco (se não existir)
-  await setDoc(doc(db, "users", user.uid), {
-    uid: user.uid,
-    name: user.displayName,
-    email: user.email,
-    lastOnline: serverTimestamp()
-  }, { merge: true });
+  // 🔹 SEMPRE salvar/atualizar usuário
+  await setDoc(
+    doc(db, "users", user.uid),
+    {
+      uid: user.uid,
+      name: user.displayName || "Usuário",
+      email: user.email || "",
+      online: true,
+      updatedAt: serverTimestamp()
+    },
+    { merge: true }
+  );
 
-  loadUsers();
+  carregarUsuarios();
 });
 
-/* LISTA DE USUÁRIOS */
-async function loadUsers() {
-  const usersRef = collection(db, "users");
-  const snapshot = await getDocs(usersRef);
+// ===============================
+// LOGOUT
+// ===============================
+logoutBtn.addEventListener("click", async () => {
+  await signOut(auth);
+  window.location.href = "index.html";
+});
 
-  const list = document.getElementById("usersList");
-  list.innerHTML = "";
+// ===============================
+// CARREGAR USUÁRIOS (CONTATOS)
+// ===============================
+function carregarUsuarios() {
+  const q = query(collection(db, "users"));
 
-  snapshot.forEach(docu => {
-    const user = docu.data();
-    if (user.uid === currentUser.uid) return;
+  onSnapshot(q, (snapshot) => {
+    contactList.innerHTML = "";
 
-    const item = document.createElement("div");
-    item.className = "user-item";
-    item.innerText = user.name;
-    item.onclick = () => openChat(user.uid);
-    list.appendChild(item);
+    snapshot.forEach((docSnap) => {
+      const user = docSnap.data();
+
+      // ❌ Não listar você mesmo
+      if (user.uid === currentUser.uid) return;
+
+      const li = document.createElement("li");
+      li.textContent = user.name;
+      li.style.cursor = "pointer";
+
+      li.onclick = () => abrirChat(user);
+
+      contactList.appendChild(li);
+    });
   });
 }
 
-/* GERAR ID DO CHAT 1x1 */
-function getChatId(uid1, uid2) {
-  return uid1 < uid2 ? uid1 + "_" + uid2 : uid2 + "_" + uid1;
-}
+// ===============================
+// ABRIR CHAT 1x1
+// ===============================
+function abrirChat(user) {
+  selectedUser = user;
+  messagesDiv.innerHTML = "";
 
-/* ABRIR CHAT */
-function openChat(otherUid) {
-  currentChatId = getChatId(currentUser.uid, otherUid);
-  listenMessages();
-}
+  if (unsubscribeMessages) unsubscribeMessages();
 
-/* ENVIAR MENSAGEM */
-window.sendMessage = async () => {
-  const input = document.getElementById("messageInput");
-  if (!input.value || !currentChatId) return;
+  const chatId = gerarChatId(currentUser.uid, user.uid);
 
-  await addDoc(collection(db, "chats", currentChatId, "messages"), {
-    from: currentUser.uid,
-    text: input.value,
-    createdAt: serverTimestamp()
-  });
-
-  input.value = "";
-};
-
-/* OUVIR MENSAGENS */
-function listenMessages() {
   const q = query(
-    collection(db, "chats", currentChatId, "messages"),
+    collection(db, "messages"),
+    where("chatId", "==", chatId),
     orderBy("createdAt")
   );
 
-  onSnapshot(q, (snapshot) => {
-    const area = document.getElementById("messages");
-    area.innerHTML = "";
+  unsubscribeMessages = onSnapshot(q, (snapshot) => {
+    messagesDiv.innerHTML = "";
 
-    snapshot.forEach(docu => {
-      const msg = docu.data();
+    snapshot.forEach((docSnap) => {
+      const msg = docSnap.data();
       const div = document.createElement("div");
-      div.className = msg.from === currentUser.uid ? "msg me" : "msg";
-      div.innerText = msg.text;
-      area.appendChild(div);
-    });
 
-    area.scrollTop = area.scrollHeight;
+      div.textContent = msg.text;
+      div.style.margin = "5px 0";
+      div.style.padding = "8px";
+      div.style.borderRadius = "6px";
+      div.style.maxWidth = "70%";
+
+      if (msg.from === currentUser.uid) {
+        div.style.background = "#d1f7c4";
+        div.style.marginLeft = "auto";
+      } else {
+        div.style.background = "#f1f1f1";
+        div.style.marginRight = "auto";
+      }
+
+      messagesDiv.appendChild(div);
+      messagesDiv.scrollTop = messagesDiv.scrollHeight;
+    });
   });
 }
-</script>
+
+// ===============================
+// ENVIAR MENSAGEM
+// ===============================
+sendBtn.addEventListener("click", enviarMensagem);
+
+function enviarMensagem() {
+  if (!selectedUser) {
+    alert("Selecione um usuário");
+    return;
+  }
+
+  const text = messageInput.value.trim();
+  if (!text) return;
+
+  const chatId = gerarChatId(currentUser.uid, selectedUser.uid);
+
+  addDoc(collection(db, "messages"), {
+    chatId,
+    from: currentUser.uid,
+    to: selectedUser.uid,
+    text,
+    createdAt: serverTimestamp()
+  });
+
+  messageInput.value = "";
+}
+
+// ===============================
+// GERAR CHAT ID ÚNICO
+// ===============================
+function gerarChatId(uid1, uid2) {
+  return uid1 < uid2 ? uid1 + "_" + uid2 : uid2 + "_" + uid1;
+  }
