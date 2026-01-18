@@ -1,0 +1,60 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>SOFI Chat - Defina seu username</title>
+  <link rel="stylesheet" href="estilo.css">
+  <script type="module" defer>
+    import { db, auth } from './firebase.js';
+    import { doc, setDoc, serverTimestamp } from "https://www.gstatic.com/firebasejs/12.8.0/firebase-firestore.js";
+    import { onAuthStateChanged } from "https://www.gstatic.com/firebasejs/12.8.0/firebase-auth.js";
+
+    let currentUser;
+
+    onAuthStateChanged(auth, (user) => {
+      if (!user) {
+        window.location.href = "index.html";
+        return;
+      }
+      currentUser = user;
+
+      // Preenche campo nome com o displayName do Google como sugestão
+      const inputNome = document.getElementById("inputNome");
+      if (user.displayName) inputNome.value = user.displayName;
+    });
+
+    async function salvarUsername() {
+      const nome = document.getElementById("inputNome").value.trim();
+      const bio = document.getElementById("inputBio").value.trim();
+
+      if (!nome) {
+        alert("Por favor, digite um nome de usuário.");
+        return;
+      }
+
+      // Salvar no Firestore
+      const userRef = doc(db, "users", currentUser.uid);
+      await setDoc(userRef, {
+        uid: currentUser.uid,
+        nome: nome,
+        bio: bio || "",
+        amigos: [],
+        online: true,
+        atualizadoEm: serverTimestamp()
+      }, { merge: true });
+
+      // Redireciona para chat
+      window.location.href = "chat.html";
+    }
+  </script>
+</head>
+<body>
+  <div class="username-container">
+    <h1>Defina seu usuário</h1>
+    <input type="text" id="inputNome" placeholder="Nome de usuário">
+    <textarea id="inputBio" placeholder="Bio (opcional)"></textarea>
+    <button onclick="salvarUsername()">Salvar e continuar</button>
+  </div>
+</body>
+</html>
